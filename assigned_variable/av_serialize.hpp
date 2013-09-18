@@ -8,7 +8,7 @@
 #ifndef C_ASSIGNED_VALUE_SERIALIZE_H
 #define	C_ASSIGNED_VALUE_SERIALIZE_H
 
-#include "c_assigned_value.h"
+#include "av_base.hpp"
 #include <boost/serialization/split_free.hpp>
 
 namespace boost {

@@ -9,7 +9,7 @@
 #define	TASSIGNEDVALUE_H
 
 #include <string>
-#include <assert.h>
+#include <cassert>
 #include <ostream>
 
 #include <boost/lexical_cast.hpp>
