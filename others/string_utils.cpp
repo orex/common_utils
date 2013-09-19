@@ -119,6 +119,10 @@ bool accept_pos(int pos, const std::string &cmp_str, const std::string &sub_str)
 {
   bool result;
   
+  result = sub_str == "";
+  if(result)
+    return result;
+  
   result = (cmp_str.length() - pos) >= sub_str.length();
   if(!result)
     return result;
@@ -137,27 +141,41 @@ bool accept_pos(int pos, const std::string &cmp_str, const std::string &sub_str)
 
 bool match_wildcard(const std::string &wc_str, const std::string &cmp_str)
 {
-  std::vector<std::string> spv = split_string_vector(wc_str, "*");
+  std::vector<std::string> spv1 = split_string_vector(wc_str, "*");
+  
+  std::vector<std::string> spv;
+  for(int i = 0; i < spv1.size(); i++)
+  {
+    spv.push_back(spv1[i]);
+    spv.push_back("");
+  }
+  spv.pop_back();  
   
   if(wc_str[0] == '*')
     spv.insert(spv.begin(), "");
 
   if(wc_str[wc_str.length() - 1] == '*')
-    spv.insert(spv.end(), "");
+    spv.push_back("");
   
   std::vector<int> pos;
-  pos.resize(spv.size() + 1, 0);
+  pos.resize(spv.size(), 0);
   
   int curr_item = 0;
   do
   {
     int accepted_pos = -1;
-    for(int i = pos[curr_item]; i < cmp_str.length(); i++)     
-    {
-      if(accept_pos(i, cmp_str, spv[curr_item]))
+    
+    if(spv[curr_item] == "")
+      accepted_pos = pos[curr_item];
+    else
+    {  
+      for(int i = pos[curr_item]; i <= cmp_str.length(); i++)     
       {
-        accepted_pos = i;
-        break;
+        if(accept_pos(i, cmp_str, spv[curr_item]))
+        {
+          accepted_pos = i;
+          break;
+        }
       }
     }
     
