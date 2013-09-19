@@ -8,6 +8,8 @@
 #include "math_utils.h"
 #include <cmath>
 #include <algorithm>
+#include <cassert>
+
 
 #ifndef EXCLUDE_KISS_FFT
  #include "../kissfft_cpp/kissfft.hh"
@@ -18,16 +20,47 @@ using namespace std;
 
 #ifndef EXCLUDE_KISS_FFT
   
+  void apply_broadeneing(vector<double> &data, const std::vector<double> &appl_func)
+  {
+    assert(data.size() == appl_func.size());
+    
+    typedef kissfft<double> FFT;
+    typedef complex<double> cpx_type;
+    
+    vector<cpx_type> data_time;
+    vector<cpx_type> data_freq;
+
+    data_time.resize(data.size());
+    data_freq.resize(data.size());
+    
+    for(int i = 0; i < data.size(); i++)
+    {  
+      data_time[i].real(data[i]);
+      data_time[i].imag(0.0);
+    }  
+    
+    FFT fft_direct(data.size(), false);
+    fft_direct.transform(&data_time[0], &data_freq[0]);
+    
+    for(int i = 0; i < appl_func.size(); i++)
+      data_freq[i] *= appl_func[i];
+    
+    FFT fft_inverse(data.size(), true);
+    fft_inverse.transform(&data_freq[0], &data_time[0]);
+    
+    for(int i = 0; i < data.size(); i++)
+      data[i] = data_time[i].real();
+  }
 
   std::vector<double> math_utils::brd_Lorenzian(const std::vector<double> &data, const double gamma)
   {
-     
-  }
-
-  std::vector<double> math_utils::brd_Gaussian(const std::vector<double> &data, const double sigma, 
-                                const double precision)
-  {
+    std::vector<double> result = data;
+    vector<double> lf(data.size());
     
+    for(int i = 0; i < lf.size(); i++)
+      lf[i] = exp(-2 * gamma * M_PI * i);
+    
+    apply_broadeneing(result, lf); 
   }
 
 #else
@@ -51,6 +84,8 @@ using namespace std;
     return result;
   }
 
+#endif  
+  
   std::vector<double> math_utils::brd_Gaussian(const std::vector<double> &data, const double sigma, 
                                 const double precision)
   {
@@ -83,4 +118,16 @@ using namespace std;
 
   }
 
-#endif
+/*
+ 
+   std::vector<double> math_utils::brd_Gaussian(const std::vector<double> &data, const double sigma, 
+                                const double precision)
+  {
+    vector<double> lf(data.size());
+    
+    for(int i = 0; i < lf.size(); i++)
+      lf[i] = exp(-2 * gamma * M_PI * i);
+    
+    apply_broadeneing(data, lf); 
+  }
+*/
