@@ -375,6 +375,7 @@ bool match_wildcard(const std::string &wc_str, const std::string &cmp_str)
  
   return curr_item > 0;
 }
+*/
 
 std::string get_index_str(const int index, const int index_max, 
                           const std::string filler)
@@ -397,4 +398,4 @@ std::string get_index_str(const int index, const int index_max,
     
   return result;
 }        
-*/
+
