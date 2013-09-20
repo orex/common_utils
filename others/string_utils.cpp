@@ -11,6 +11,8 @@
 #include <assert.h>
 #include <map>
 
+#include <iostream>
+
 #include "string_utils.h"
 
 std::string &trim(std::string &str)
@@ -138,7 +140,188 @@ bool accept_pos(int pos, const std::string &cmp_str, const std::string &sub_str)
   return result;  
 }
 
+class wc_token
+{
+protected:
+  const std::string &match_string;
+  int pos_begin;
+  bool reseted;
+  virtual bool fit_next_intrln() = 0;  
+public:
+  wc_token(const std::string & match_string_v) : 
+           match_string(match_string_v), reseted(false) {};
+  virtual void reset(int pos_begin_v)
+  { 
+    pos_begin = pos_begin_v;
+    reseted = true;
+  };
+  virtual int next_token_pos() = 0;
+  bool fit_next()
+  {
+    if( reseted ) 
+      return fit_next_intrln();
+    else
+      return false;
+  }
+};
 
+class wc_star_token : public wc_token
+{
+protected:
+  int size;    
+  int max_size;
+
+  virtual bool fit_next_intrln()
+  {
+    size++;
+    return (size <= max_size + 2) || (pos_begin + size < match_string.size() + 1);
+  }
+ 
+public:  
+  wc_star_token(const std::string & match_string_v, int max_size_v) :
+                   wc_token(match_string_v), max_size(max_size_v) {};
+  virtual void reset(int pos_begin_v)
+  { 
+    wc_token::reset(pos_begin_v);
+    size = 0; 
+  }
+  virtual int next_token_pos()
+  {
+    //-1 because of size++ in fit next. 
+    return pos_begin + size - 1;
+  }
+};
+
+class wc_end_token : public wc_token
+{
+protected:
+  virtual bool fit_next_intrln()
+  {
+    reseted = false;
+    return pos_begin == match_string.size();
+  }
+    
+public:
+  wc_end_token(const std::string & match_string_v) :
+                  wc_token(match_string_v){};
+
+  virtual int next_token_pos()
+  {
+    return pos_begin + 1;
+  }
+  
+};
+/*
+class wc_word_token : public wc_token
+{
+protected:
+  std::string word;    
+public:  
+  wc_word_tocken(const std::string & match_string_v, const std::string &word_v) :
+                   wc_token(match_string_v), word(word_v) {};
+  virtual int next_token_pos()
+  {
+    return pos_begin + word.size();
+  }
+                   
+  virtual bool fit()
+  {
+    _finish = true;
+    bool result = pos_begin + word.size() < match_string.size();
+    if(!result)
+      return result;  
+    
+    return word == match_string.substr(pos_begin, word.size());
+  }
+};*/
+
+
+class wc_char_token : public wc_token
+{
+protected:
+  char char_match;  
+
+  virtual bool fit_next_intrln()
+  {
+    reseted = false;
+    bool result = pos_begin < match_string.size();
+    if(!result)
+      return result;  
+    
+    result = match_string[pos_begin] == char_match; 
+    return result;
+  }
+  
+public:
+  wc_char_token(const std::string & match_string_v, char c) :
+                  wc_token(match_string_v), char_match(c) {};
+  
+  virtual int next_token_pos()
+  {
+    return pos_begin + 1;
+  }
+};
+
+
+class wc_any_char_token : public wc_token
+{
+protected:
+  virtual bool fit_next_intrln()
+  {
+    reseted = false;
+    return pos_begin < match_string.size();
+  }
+    
+public:
+  wc_any_char_token(const std::string & match_string_v) :
+                  wc_token(match_string_v) {};
+
+  virtual int next_token_pos()
+  {
+    return pos_begin + 1;
+  }
+};
+
+bool match_wildcard(const std::string &wc_str, const std::string &cmp_str)
+{
+  std::vector<wc_token *> spv;
+  
+  for(int i = 0; i < wc_str.size(); i++)
+  {    
+    wc_token * wct;
+    
+    if(wc_str[i] == '*')
+      wct = new wc_star_token(cmp_str, cmp_str.size());
+    else if(wc_str[i] == '?')
+      wct = new wc_any_char_token(cmp_str);
+    else
+      wct = new wc_char_token(cmp_str, wc_str[i]);
+    
+    spv.push_back(wct);
+  }
+  spv.push_back(new wc_end_token(cmp_str));
+  
+  int curr_token = 0;
+  spv[0]->reset(0);
+  while( (curr_token >= 0) && (curr_token < spv.size()) )
+  {
+    if( spv[curr_token]->fit_next() )
+    {
+      if( curr_token + 1 < spv.size() )
+        spv[curr_token + 1]->reset(spv[curr_token]->next_token_pos());
+      curr_token++;              
+    }
+    else
+      curr_token--;
+  }    
+    
+  for(int i = 0; i < spv.size(); i++)
+    delete spv[i];
+  
+  return curr_token >= 0;
+}
+
+/*
 bool match_wildcard(const std::string &wc_str, const std::string &cmp_str)
 {
   std::vector<std::string> spv1 = split_string_vector(wc_str, "*");
@@ -214,3 +397,4 @@ std::string get_index_str(const int index, const int index_max,
     
   return result;
 }        
+*/
