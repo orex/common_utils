@@ -12,7 +12,7 @@
 
 namespace OpenBabel 
 {
-  OpenBabel::vector3 get_minimal_distance(OpenBabel::vector3 dist, 
+  OpenBabel::vector3 get_minimal_distance(const OpenBabel::vector3 &dist, 
                                           OpenBabel::OBUnitCell * unitcell);
   
   OpenBabel::vector3 center_mass(const std::vector<OpenBabel::vector3> &atoms_pos,

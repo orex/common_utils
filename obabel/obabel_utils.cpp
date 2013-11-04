@@ -9,7 +9,7 @@
 
 #include <cassert>
 
-OpenBabel::vector3 OpenBabel::get_minimal_distance(OpenBabel::vector3 dist, 
+OpenBabel::vector3 OpenBabel::get_minimal_distance(const OpenBabel::vector3 &dist, 
                                                    OpenBabel::OBUnitCell * unitcell)
 {
   vector3 result;
