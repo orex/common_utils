@@ -9,10 +9,13 @@
 #define	RND_UTILS_H
 
 #include <boost/random.hpp>
+#include <vector>
 
 boost::mt19937 create_rnd_gen();
 double get_rnd_value_in_interval(boost::mt19937 &rng, double min, double max);
 int get_rnd_int_value_in_interval(boost::mt19937 &rng, int min, int max);
+
+std::vector<int> get_random_numbers(int count, int max_number);
 
 #endif	/* RND_UTILS_H */
 
