@@ -12,43 +12,50 @@
 OpenBabel::vector3 OpenBabel::get_minimal_distance(const OpenBabel::vector3 &dist, 
                                                    OpenBabel::OBUnitCell * unitcell)
 {
-  vector3 result;
+  std::vector<OpenBabel::vector3> vr;
+  
+  vr = get_image_distances(dist, unitcell);
+  
+  return vr[0];
+}
+
+
+bool vector3_compare(OpenBabel::vector3 v1, OpenBabel::vector3 v2) 
+{ 
+  return v1.length_2() < v2.length_2(); 
+}
+
+
+std::vector<OpenBabel::vector3> OpenBabel::get_image_distances(const OpenBabel::vector3 &dist, 
+                                                              OpenBabel::OBUnitCell * unitcell)
+{
+  std::vector<OpenBabel::vector3> result;
 
   matrix3x3 cell = unitcell->GetCellMatrix().transpose();
   matrix3x3 cf   = cell.inverse();
   
   vector3 frac = cf * dist;
   
-  //cout << cell << endl;
-  //cout << cf << endl;          
-  
-  //cout << dist.GetX() << " " << dist.GetY() << " " << dist.GetZ() << endl;
-  //cout << frac.GetX() << " " << frac.GetY() << " " << frac.GetZ() << endl;
-  result = dist;
-  double res_length2 = dist.length_2();
-  for(int i = -2; i < 3; i++)
+  result.clear();  
+  for(int i = -4; i < 5; i++)
   {
-    for(int j = -2; j < 3; j++)
+    for(int j = -4; j < 5; j++)
     {
-      for(int k = -2; k < 3; k++)
+      for(int k = -4; k < 5; k++)
       {
         vector3 frac_test, dist_test;
         frac_test.Set(frac.GetX() + i, frac.GetY() + j, frac.GetZ() + k);
         dist_test = cell * frac_test;
-        double cur_dist2 = dist_test.length_2();
-        if( cur_dist2 < res_length2)
-        {  
-          result = dist_test;
-          res_length2 = cur_dist2;
-        }  
+        result.push_back(dist_test);
       }  
     }  
   }  
   
-  //cout << result.GetX() << " " << result.GetY() << " " << result.GetZ() << endl;
+  std::sort(result.begin(), result.end(), vector3_compare);
   
   return result;
 }
+
 
 OpenBabel::vector3 OpenBabel::center_mass(const std::vector<OpenBabel::vector3> &atoms_pos,
                                           OpenBabel::OBUnitCell * unitcell,
