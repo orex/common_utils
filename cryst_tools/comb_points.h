@@ -8,28 +8,50 @@
 #ifndef COMB_POINTS_H
 #define	COMB_POINTS_H
 
-
-
-class cmb_point
-{
-public:
-  virtual double distance(const cmb_point &p) const = 0;
-};
+#include <vector>
+#include <list>
+#include <set>
+#include <boost/random.hpp>
 
 class cmb_group
 {
-public:
-  std::vector<cmb_point *> pnts;
+public:  
+  std::set<int> indexes;
+  bool unique_conn;
 };
 
-class comb_points 
+typedef std::vector<cmb_group> groups_vc;
+
+typedef std::vector<std::set<int> > index_conn;
+
+typedef std::vector<double> vc_dist;
+typedef std::map<double, int> map_dist;
+
+struct cmb_dist
 {
+  int index_cntr;
+  vc_dist   dst_array;
+  map_dist  dst_map;
+};
+
+
+class points_clusters
+{
+protected:
+  boost::mt19937 rnd_gen;
+  void get_dist_vc_map(int index_cntr, vc_dist &dst_array, map_dist dst_map);
+  void delete_singles(std::vector<int> &data);
+protected:
+  virtual int get_points_size() const = 0;
+  virtual double get_distance(int i, int j) const = 0;
+  groups_vc split_group(const cmb_group &cg, double tol);
+  bool cluster_combinations(groups_vc &vc, double tol);
+  int  get_possible_connections(index_conn &ic, double tol, 
+                                int min_cntr_points = 4);
+  int  verify_connections(index_conn &ic, double tol);
+  void create_groups(const index_conn &ic, groups_vc &grp);
 public:
-  comb_points();
-  
-  comb_points(const comb_points& orig);
-  virtual ~comb_points();
-private:
+  points_clusters();  
 };
 
 #endif	/* COMB_POINTS_H */

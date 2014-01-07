@@ -6,13 +6,257 @@
  */
 
 #include "comb_points.h"
+#include "others/rnd_utils.h"
+#include <boost/range/algorithm/random_shuffle.hpp>
+#include <map>
 
-comb_points::comb_points() {
+#include <cassert>
+#include <algorithm>
+#include <ctime>
+
+using namespace std;
+
+points_clusters::points_clusters()
+{
+  rnd_gen = create_rnd_gen();
 }
 
-comb_points::comb_points(const comb_points& orig) {
+void points_clusters::delete_singles(std::vector<int> &data)
+{
+  sort(data.begin(), data.end());
+  int pos_cmb = 0;
+  for(int i = 0; i < data.size() - 1; i++)
+  {
+    if( data[i] == data[i + 1])
+    {  
+      data[pos_cmb] = data[i];
+      pos_cmb++;
+    }  
+  }
+  data.resize(pos_cmb);
 }
 
-comb_points::~comb_points() {
+void points_clusters::get_dist_vc_map(int index_cntr, vc_dist &dst_array, map_dist dst_map)
+{
+  dst_map.clear();
+  dst_array.resize(get_points_size(), 0.0);
+  for(int i = 0; i < get_points_size(); i++)
+  {
+    double dist = get_distance(index_cntr, i);
+    dst_array[i] = dist;
+    dst_map[dist] = i;
+  }
 }
 
+int points_clusters::get_possible_connections(index_conn &ic, double tol,
+                                               int min_cntr_points)
+{
+  vector<cmb_dist> dist_cntr;
+  
+  dist_cntr.resize(min_cntr_points);
+  
+  for(int i = 0; i < dist_cntr.size(); i++)
+  {
+    dist_cntr[i].index_cntr = 
+        get_rnd_int_value_in_interval(rnd_gen, 0, get_points_size() - 1);
+    get_dist_vc_map(dist_cntr[i].index_cntr, dist_cntr[i].dst_array, dist_cntr[i].dst_map);
+  }
+  
+  int conn_num = 0;
+  
+  ic.resize(get_points_size());
+  for(int i = 0; i < ic.size(); i++)
+  {
+    std::vector<int> ms;
+    ms.clear();
+    for(int j = 0; j < dist_cntr.size(); j++)
+    {
+      double dst = dist_cntr[j].dst_array[i];
+      map_dist::const_iterator min_it = dist_cntr[j].dst_map.lower_bound(dst - tol);
+      map_dist::const_iterator max_it = dist_cntr[j].dst_map.upper_bound(dst + tol);
+      for(map_dist::const_iterator it = min_it; it != max_it; it++)
+        ms.push_back(it->second);
+      
+      if(j != 0)
+        delete_singles(ms);
+    }
+    ic[i].clear();
+    ic[i].insert(ms.begin(), ms.end());
+    conn_num += ms.size();
+  }
+  return conn_num;
+}
+
+int points_clusters::verify_connections(index_conn &ic, double tol)
+{
+  int result = 0;
+  
+  for(int i = 0; i < ic.size(); i++)
+  {
+    set<int>::iterator it_next;
+    for(set<int>::iterator it = ic[i].begin(); it != ic[i].end(); it = it_next)
+    {
+      it_next = it + 1;
+      if(get_distance(i, *it) > tol)
+      {  
+        ic[i].erase(it);
+        result++;
+      }  
+    }  
+  }
+  
+  return result;
+}
+
+void points_clusters::create_groups(const index_conn &ic, groups_vc &grp)
+{
+  vector<int> group_num;
+  map<int, int> group_st; 
+  
+  group_num.resize(ic.size());
+  for(int i = 0; i < group_num.size(); i++)
+    group_num[i] = i;
+  
+  //Set groups num by lowers connection  
+  for(int i = 0; i < ic.size(); i++)
+  {
+    //Avoid connections down and self connections
+    set<int>::const_iterator it = upper_bound(ic[i].begin(), ic[i].end(), i);
+    for(; it != ic[i].end(); it++)
+      group_num[*it] = group_num[i];
+  }
+  
+  //set groups num 0..1..grp_num - 1
+  int grp_num = 0;
+  for(int i = 0; i < group_num.size(); i++)
+  {
+    if(group_st.count(group_num[i]) == 0)
+    {
+      group_st[group_num[i]] = grp_num;
+      grp_num++;
+    }  
+  }
+  grp.resize(grp_num);
+  
+  for(int i = 0; i < group_num.size(); i++)
+  {
+    int index_group = group_st[group_num[i]];
+    grp[index_group].indexes.insert(i);
+  }
+
+  for(int i = 0; i < grp.size(); i++)
+  {
+    int num_conn0 = ic[*grp[i].indexes.begin()].size();
+    grp[i].unique_conn = 
+    grp[i].indexes.size() == num_conn0;
+    assert( num_conn0 <= grp[i].indexes.size() );
+  }
+}
+
+
+
+/*
+bool create_cmb_point_combinations(const cmb_points_ptrs &cpp, 
+                                   groups_vc &vc, double tol)
+{
+  bool result = true;
+  
+  vc.clear();
+  
+  for(int i = 0; i < cpp.size(); i++)  
+  {
+    int ng_belong = 0;
+    for(int j = 0; j < vc.size(); j++)
+    {
+      double min_distance = 1E12;
+      double max_distance = -1E12;
+      for(int k = 0; k < vc[j].indexes.size(); k++)
+      {
+        double dist = cpp[i]->distance(*cpp[vc[j].indexes[k]]);
+        min_distance = min(min_distance, dist);
+        max_distance = max(max_distance, dist);
+      }
+      assert(max_distance >= 0 );
+      assert(min_distance <= max_distance);
+      
+      if( max_distance <= tol )
+      {
+        vc[j].indexes.push_back(i);
+        vc[j].max_dist = max(vc[j].max_dist, max_distance);
+        ng_belong++;
+      }
+      
+      if( (min_distance <= tol) && (max_distance > tol) )
+        return false;
+    }  
+    if(ng_belong > 1)
+      return false;
+    
+    if(ng_belong == 0)
+    {
+      cmb_group cg;
+      cg.max_dist = 0;
+      cg.indexes.clear();
+      cg.indexes.push_back(i);
+      vc.push_back(cg);
+    }  
+  }  
+  
+  return result;
+} */
+
+groups_vc points_clusters::split_group(const cmb_group &cg, double tol)
+{
+  groups_vc result;
+  /*
+  #ifndef NDEBUG
+  std::vector<int> index_diff(indexes.size() + splited_indexes.size());
+  
+  std::vector<int>::iterator it =
+  set_symmetric_difference(indexes.begin(), indexes.end(),
+                             splited_indexes.begin(), splited_indexes.end(),
+                             index_diff.begin());
+  assert( it == index_diff.begin() );
+  #endif
+  */
+
+  vector<int> index_shuffle(cg.indexes.size());
+  copy(cg.indexes.begin(), cg.indexes.end(), index_shuffle.begin());
+  
+  br_random_shuffle(index_shuffle.begin(), index_shuffle.end(), rnd_gen);
+  
+  //Get random base index
+
+  //calculate distances
+  double max_distance = -1.0;
+  for(int i = 0; i < index_shuffle.size(); i++)
+  {
+    result.clear();
+    typedef pair<double, int> dist_index_pair;
+    vector<dist_index_pair> dist_index;
+    dist_index.resize(index_shuffle.size());
+    for(int j = 0; j < index_shuffle.size(); j++)
+    { 
+      dist_index[j].first = get_distance(i, j);
+      dist_index[j].second = j;
+    }
+
+    std::sort(dist_index.begin(), dist_index.end());
+    double curr_max_distance = dist_index[dist_index.size() - 1].first;
+    max_distance = max(max_distance, curr_max_distance);
+    
+    for(int j = 0; j < dist_index.size(); j++)
+    { 
+        
+    }
+  }
+
+  return result;  
+}
+
+bool points_clusters::cluster_combinations(groups_vc &vc, double tol)
+{
+  std::srand ( unsigned ( std::time(0) ) );  
+  rnd_gen = create_rnd_gen();
+    
+}

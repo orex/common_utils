@@ -102,8 +102,6 @@ std::vector<Eigen::Vector3d> cryst_tools::get_shifts(const Eigen::Matrix3d &sym_
   std::vector<Eigen::Vector3d> result;  
   //frac_coords[j] == sym_matrix_B * frac_coords[i] + shift
   
-  for  
-  
    
   return result;
 }
