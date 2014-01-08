@@ -108,7 +108,7 @@ int points_clusters::verify_connections(index_conn &ic, double tol)
   return result;
 }
 
-void points_clusters::create_groups(const index_conn &ic, groups_vc &grp)
+void points_clusters::assign_groups(const index_conn &ic, groups_vc &grp)
 {
   vector<int> group_num;
   map<int, int> group_st; 
@@ -153,110 +153,11 @@ void points_clusters::create_groups(const index_conn &ic, groups_vc &grp)
   }
 }
 
-
-
-/*
-bool create_cmb_point_combinations(const cmb_points_ptrs &cpp, 
-                                   groups_vc &vc, double tol)
+void points_clusters::create_groups(groups_vc &vc, double tol, int min_cntr_points)
 {
-  bool result = true;
-  
-  vc.clear();
-  
-  for(int i = 0; i < cpp.size(); i++)  
-  {
-    int ng_belong = 0;
-    for(int j = 0; j < vc.size(); j++)
-    {
-      double min_distance = 1E12;
-      double max_distance = -1E12;
-      for(int k = 0; k < vc[j].indexes.size(); k++)
-      {
-        double dist = cpp[i]->distance(*cpp[vc[j].indexes[k]]);
-        min_distance = min(min_distance, dist);
-        max_distance = max(max_distance, dist);
-      }
-      assert(max_distance >= 0 );
-      assert(min_distance <= max_distance);
-      
-      if( max_distance <= tol )
-      {
-        vc[j].indexes.push_back(i);
-        vc[j].max_dist = max(vc[j].max_dist, max_distance);
-        ng_belong++;
-      }
-      
-      if( (min_distance <= tol) && (max_distance > tol) )
-        return false;
-    }  
-    if(ng_belong > 1)
-      return false;
-    
-    if(ng_belong == 0)
-    {
-      cmb_group cg;
-      cg.max_dist = 0;
-      cg.indexes.clear();
-      cg.indexes.push_back(i);
-      vc.push_back(cg);
-    }  
-  }  
-  
-  return result;
-} */
+  index_conn ic;
+  possible_connections = get_possible_connections(ic, tol, min_cntr_points);
+  total_connection = verify_connections(ic, tol);
+  assign_groups(ic, vc);
+} 
 
-groups_vc points_clusters::split_group(const cmb_group &cg, double tol)
-{
-  groups_vc result;
-  /*
-  #ifndef NDEBUG
-  std::vector<int> index_diff(indexes.size() + splited_indexes.size());
-  
-  std::vector<int>::iterator it =
-  set_symmetric_difference(indexes.begin(), indexes.end(),
-                             splited_indexes.begin(), splited_indexes.end(),
-                             index_diff.begin());
-  assert( it == index_diff.begin() );
-  #endif
-  */
-
-  vector<int> index_shuffle(cg.indexes.size());
-  copy(cg.indexes.begin(), cg.indexes.end(), index_shuffle.begin());
-  
-  br_random_shuffle(index_shuffle.begin(), index_shuffle.end(), rnd_gen);
-  
-  //Get random base index
-
-  //calculate distances
-  double max_distance = -1.0;
-  for(int i = 0; i < index_shuffle.size(); i++)
-  {
-    result.clear();
-    typedef pair<double, int> dist_index_pair;
-    vector<dist_index_pair> dist_index;
-    dist_index.resize(index_shuffle.size());
-    for(int j = 0; j < index_shuffle.size(); j++)
-    { 
-      dist_index[j].first = get_distance(i, j);
-      dist_index[j].second = j;
-    }
-
-    std::sort(dist_index.begin(), dist_index.end());
-    double curr_max_distance = dist_index[dist_index.size() - 1].first;
-    max_distance = max(max_distance, curr_max_distance);
-    
-    for(int j = 0; j < dist_index.size(); j++)
-    { 
-        
-    }
-  }
-
-  return result;  
-}
-
-bool points_clusters::cluster_combinations(groups_vc &vc, double tol)
-{
-  std::srand ( unsigned ( std::time(0) ) );  
-  rnd_gen = create_rnd_gen();
-    
-}

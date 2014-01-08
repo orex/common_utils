@@ -11,6 +11,7 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <map>
 #include <boost/random.hpp>
 
 class cmb_group
@@ -42,16 +43,18 @@ protected:
   void get_dist_vc_map(int index_cntr, vc_dist &dst_array, map_dist dst_map);
   void delete_singles(std::vector<int> &data);
 protected:
-  virtual int get_points_size() const = 0;
-  virtual double get_distance(int i, int j) const = 0;
-  groups_vc split_group(const cmb_group &cg, double tol);
-  bool cluster_combinations(groups_vc &vc, double tol);
   int  get_possible_connections(index_conn &ic, double tol, 
                                 int min_cntr_points = 4);
   int  verify_connections(index_conn &ic, double tol);
-  void create_groups(const index_conn &ic, groups_vc &grp);
+  void assign_groups(const index_conn &ic, groups_vc &grp);
 public:
-  points_clusters();  
+  int possible_connections;
+  int total_connection;  
+  virtual int get_points_size() const = 0;
+  virtual double get_distance(int i, int j) const = 0;
+public:
+  points_clusters();
+  void create_groups(groups_vc &vc, double tol, int min_cntr_points);
 };
 
 #endif	/* COMB_POINTS_H */
