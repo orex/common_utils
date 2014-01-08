@@ -19,6 +19,7 @@ class cmb_group
 public:  
   std::set<int> indexes;
   bool unique_conn;
+  double max_dist;
 };
 
 typedef std::vector<cmb_group> groups_vc;
@@ -40,7 +41,7 @@ class points_clusters
 {
 protected:
   boost::mt19937 rnd_gen;
-  void get_dist_vc_map(int index_cntr, vc_dist &dst_array, map_dist dst_map);
+  void get_dist_vc_map(int index_cntr, vc_dist &dst_array, map_dist &dst_map);
   void delete_singles(std::vector<int> &data);
 protected:
   int  get_possible_connections(index_conn &ic, double tol, 
@@ -55,6 +56,7 @@ public:
 public:
   points_clusters();
   void create_groups(groups_vc &vc, double tol, int min_cntr_points);
+  void assign_max_dist(groups_vc &vc);
 };
 
 #endif	/* COMB_POINTS_H */

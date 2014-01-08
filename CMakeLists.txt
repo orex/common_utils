@@ -10,7 +10,8 @@ else()
   message(STATUS "No Boost::Test found. All tests have been disabled.")
 endif()  
 
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 

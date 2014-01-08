@@ -18,7 +18,8 @@ target_link_libraries(test_rnd ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${Boost_RAND
 add_test(NAME Test_random_array COMMAND test_rnd)
 
 add_executable(test_comb_points test_comb_points.cpp
-                        ${CMAKE_SOURCE_DIR}/cryst_tools/comb_points.cpp)
+                        ${CMAKE_SOURCE_DIR}/cryst_tools/comb_points.cpp
+                        ${CMAKE_SOURCE_DIR}/others/rnd_utils.cpp)
 target_link_libraries(test_comb_points ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${Boost_RANDOM_LIBRARY})
 add_test(NAME Test_Comb_Points COMMAND test_comb_points)
 
