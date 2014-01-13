@@ -21,6 +21,7 @@ points_clusters::points_clusters()
   possible_connections = 0;
   total_connection = 0;  
   rnd_gen = create_rnd_gen();
+  //rnd_gen.seed(1);
 }
 
 void points_clusters::delete_singles(std::vector<int> &data)
@@ -46,7 +47,7 @@ void points_clusters::get_dist_vc_map(int index_cntr, vc_dist &dst_array, map_di
   {
     double dist = get_distance(index_cntr, i);
     dst_array[i] = dist;
-    dst_map[dist] = i;
+    dst_map.insert(std::pair<double, int>(dist, i));
   }
 }
 
@@ -56,7 +57,7 @@ int points_clusters::get_possible_connections(index_conn &ic, double tol,
   vector<cmb_dist> dist_cntr;
   
   dist_cntr.resize(min_cntr_points);
-  
+
   for(int i = 0; i < dist_cntr.size(); i++)
   {
     dist_cntr[i].index_cntr = 
@@ -65,12 +66,13 @@ int points_clusters::get_possible_connections(index_conn &ic, double tol,
   }
   
   int conn_num = 0;
-  
   ic.resize(get_points_size());
+  
   for(int i = 0; i < ic.size(); i++)
   {
     std::vector<int> ms;
     ms.clear();
+    ms.reserve(ic.size() / 10);
     for(int j = 0; j < dist_cntr.size(); j++)
     {
       double dst = dist_cntr[j].dst_array[i];
@@ -87,12 +89,14 @@ int points_clusters::get_possible_connections(index_conn &ic, double tol,
     }
     ic[i].clear();
     ic[i].insert(ms.begin(), ms.end());
+    
     conn_num += ms.size();
   }
+
   return conn_num;
 }
 
-int points_clusters::verify_connections(index_conn &ic, double tol)
+int points_clusters::verify_connections(index_conn &ic)
 {
   int result = 0;
   
@@ -103,19 +107,13 @@ int points_clusters::verify_connections(index_conn &ic, double tol)
     {
       it_next = it;
       ++it_next;
-      if(get_distance(i, *it) > tol)
+      if(!is_connected(i, *it))
         ic[i].erase(it);
       else
-      {  
-        //if( (i == 4))
-          //cout << "4 connected to " << *it << endl;
         result++;
-      }  
-      
-      
     }  
   }
-  
+
   return result;
 }
 
@@ -192,11 +190,13 @@ void points_clusters::assign_groups(const index_conn &ic, groups_vc &grp)
   }
 }
 
-void points_clusters::create_groups(groups_vc &vc, double tol, int min_cntr_points)
+void points_clusters::create_groups_internal(groups_vc &vc, double tolerance_v, int min_cntr_points)
 {
+  tol_list = tolerance_v;
+  
   index_conn ic;
-  possible_connections = get_possible_connections(ic, tol, min_cntr_points);
-  total_connection = verify_connections(ic, tol);
+  possible_connections = get_possible_connections(ic, tol_list, min_cntr_points);
+  total_connection = verify_connections(ic);
   assign_groups(ic, vc);
 }
 

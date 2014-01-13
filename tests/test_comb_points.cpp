@@ -228,8 +228,6 @@ BOOST_AUTO_TEST_CASE(Test_random_points_comb_3D)
       //Check distances
       BOOST_CHECK_EQUAL(gvc_ref[j].max_dist, m_dist);
     }  
-    
-    
   }  
 }
 
