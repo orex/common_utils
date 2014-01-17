@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project(common_utils)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O3 -Wall -Wno-sign-compare -Wextra " )
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wno-sign-compare -Wextra " )
 
 find_package(Boost 1.46 COMPONENTS unit_test_framework)
 
@@ -12,8 +12,8 @@ else()
   message(STATUS "No Boost::Test found. All tests have been disabled.")
 endif()  
 
-#set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Release)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -46,7 +46,6 @@ Eigen::Matrix<T, 3, 3> b2e_matrix(const OpenBabel::matrix3x3 &m)
 }
 
 
-//TODO: Implement this!!!!!!!!!!
 template <typename T>
 Eigen::Transform<T, 3, Eigen::Affine> b2e_affine(const OpenBabel::transform3d &tf)
 {
@@ -65,6 +64,26 @@ Eigen::Transform<T, 3, Eigen::Affine> b2e_affine(const OpenBabel::transform3d &t
   
   return result;
 }
+
+/*
+template <typename T>
+OpenBabel::transform3d e2b_affine(const Eigen::Transform<T, 3, Eigen::Affine> &tf)
+{
+  using namespace OpenBabel;
+  
+  OpenBabel::transform3d result();
+  result.setIdentity();
+
+  vector3 v = tf * vector3(0, 0, 0);
+  
+  result.linear().col(0) = b2e_vector<T>(tf * vector3(1.0, 0.0, 0.0) - v);
+  result.linear().col(1) = b2e_vector<T>(tf * vector3(0.0, 1.0, 0.0) - v);
+  result.linear().col(2) = b2e_vector<T>(tf * vector3(0.0, 0.0, 1.0) - v);
+  
+  result.translation() = b2e_vector<T>(v);
+  
+  return result;
+}*/
 
 #endif	/* EIGEN2BABEL_H */
 

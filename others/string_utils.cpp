@@ -163,6 +163,8 @@ public:
     else
       return false;
   }
+  virtual ~wc_token()
+  {};
 };
 
 class wc_star_token : public wc_token

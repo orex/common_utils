@@ -87,16 +87,17 @@ BOOST_AUTO_TEST_CASE(Test_first)
       
       cell = b2e_matrix<double>(p1_unitcell->GetCellMatrix().transpose());
       
-      vector<Affine3d> syms = get_all_symmetries(cell, frc, 4E-3, 1);
-      /*     
+      vector<Affine3d> syms = get_all_symmetries(cell, frc, 1E-2, 1);
+      
+      /*
       for(int i = 0; i < syms.size(); i++)
       {
         cout << "Symmetry " << i << ": "<< endl;
         cout << "Matrix: " << endl << syms[i].linear() << endl;
         cout << "Move: " << endl << syms[i].translation().transpose() << endl;
         //cout << "Coord: " << (syms[i] * Vector3d(0, 0, 0)).transpose() << endl;
-      }
-      */
+      }*/
+      
       transform3dIterator ti;
       const SpaceGroup* pSG = orig_unitcell->GetSpaceGroup();   
       

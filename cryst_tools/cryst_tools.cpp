@@ -135,6 +135,7 @@ public:
   Vector3d average_vector(const cmb_group &cbg);
   bool total_shift(const cmb_group &cbg, int poins_num);
   void create_groups(groups_vc &vc, double tol_cart_v);    
+  virtual void assign_max_dist(groups_vc &gc);  
 };
 
 ps_shifts::ps_shifts(const Matrix3d &cell_v)
@@ -196,6 +197,7 @@ Vector3d ps_shifts::average_vector(const cmb_group &cbg)
   
   return result;
 }
+
 bool ps_shifts::total_shift(const cmb_group &cbg, int poins_num)
 {
   bool result;
@@ -221,6 +223,22 @@ bool ps_shifts::total_shift(const cmb_group &cbg, int poins_num)
   return result;
 }
 
+void ps_shifts::assign_max_dist(groups_vc &gc)
+{
+  for(int i = 0; i < gc.size(); i++)
+  {
+    double md = 0;
+    for(set<int>::const_iterator it  = gc[i].indexes.begin(); 
+                                 it != gc[i].indexes.end(); ++it)
+    {
+      for(set<int>::const_iterator jt  = gc[i].indexes.begin(); 
+                                   jt != gc[i].indexes.end(); ++jt)
+        md = max(md, (cell * min_frac(vc[*it] - vc[*jt])).norm());
+    }  
+    gc[i].max_dist = md;
+  }  
+}
+
 std::vector<Eigen::Vector3d> cryst_tools::get_shifts(const Eigen::Matrix3d &sym_matrix_B,
                                                      const Eigen::Matrix3d &cell,
                                                      const std::vector<Eigen::Vector3d> &frac_coords,
@@ -236,8 +254,8 @@ std::vector<Eigen::Vector3d> cryst_tools::get_shifts(const Eigen::Matrix3d &sym_
     for(int j = 0; j < frac_coords.size(); j++)
     {
       Vector3d shift;
-      shift = sym_matrix_B * frac_coords[i] - frac_coords[j];
-      ps.ps_add_shift(i, shift);      
+      shift = frac_coords[j] - sym_matrix_B * frac_coords[i];
+      ps.ps_add_shift(i, shift);
     }  
   }  
   
@@ -288,9 +306,12 @@ std::vector<Eigen::Vector3d> cryst_tools::shifts_intersect(const Eigen::Matrix3d
 
 std::vector<Eigen::Affine3d> cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
                                                              const vc_sets &frac_coords,
-                                                             const double tol,        
+                                                             const std::vector<bool> &all_symm, 
+                                                             const double tol,
                                                              const int range)
 {
+  assert(all_symm.size() == frac_coords.size());
+  
   vector<Affine3d> result;
   result.clear();
   
@@ -301,14 +322,14 @@ std::vector<Eigen::Affine3d> cryst_tools::get_all_symmetries(const Eigen::Matrix
     vector<Vector3d> shifts_total;
     for(int j = 0; j < frac_coords.size(); j++)
     {  
-      vector<Vector3d> shifts = get_shifts(symm[i], cell, frac_coords[j], tol, true);
-      
+      vector<Vector3d> shifts = get_shifts(symm[i], cell, frac_coords[j], tol, all_symm[j]);
+
       if(j == 0)
         shifts_total = shifts;
       else
         shifts_total = shifts_intersect(cell, shifts_total, shifts, tol);
     }
-
+    
     for(int j = 0; j < shifts_total.size(); j++)
     {
       Affine3d mo;
@@ -325,25 +346,125 @@ std::vector<Eigen::Affine3d> cryst_tools::get_all_symmetries(const Eigen::Matrix
 }        
 
 
-  /*
-  //remove translations shifts over cell
-  for(o_list::iterator it = out_list.begin(); it != out_list.end(); ++it)
+
+std::vector<Eigen::Affine3d> cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
+                                                             const vc_sets &frac_coords,
+                                                             const double tol,        
+                                                             const int range)
+{
+  vector<bool> bc;
+  bc.resize(frac_coords.size(), true);
+  
+  return get_all_symmetries(cell, frac_coords, bc, tol, range);
+}        
+
+void cryst_tools::min_dist::set_cell(const Eigen::Matrix3d &cell_v)
+{
+  box_size.setZero();
+  
+  cell = cell_v;
+  r_cell = cell.inverse();
+  
+  Matrix3d Q = cell.inverse().transpose() * cell.inverse();
+  
+  r2_dist_direct = 1E12;
+  
+  for(int i = -4; i < 5; i++)
   {
-    o_list::iterator jt = it;
-    ++jt;
-    o_list::iterator jt_next;
-    for(; jt != out_list.end(); jt = jt_next)
+    for(int j = -4; j < 5; j++)
     {
-      jt_next = jt;
-      ++jt_next;
-      double sum= 0;
-      for(int i = 0; i < 3; i++)
-      {  
-        double d = (*jt)[i] - (*it)[i];
-        sum += abs(d - round(d));
-      }
-      if(sum < 1E-4)
-        out_list.erase(jt);
-    }
+      for(int k = -4; k < 5; k++)
+      {
+        Vector3i vi_ind(i, j, k);
+        Vector3d v_ind(i, j, k);
+        Vector3d Qv = Q * v_ind;
+        double d = v_ind.transpose() * Qv - (abs(Qv[0]) + abs(Qv[1]) + abs(Qv[2]));
+        
+        if(vi_ind.squaredNorm() != 0)
+          r2_dist_direct = min(r2_dist_direct, (cell * v_ind).squaredNorm());
+        
+        if( d < -tol )
+        {  
+          for(int l = 0; l < 3; l++)
+            box_size[l] = max(box_size[l], abs(vi_ind[l]));
+        }  
+      }  
+    }  
   }
-  */  
+  
+  cell_assigned = true;  
+}
+
+Eigen::Vector3d cryst_tools::min_dist::operator ()(const Eigen::Vector3d &vd) const
+{
+  assert(cell_assigned);
+  
+  Eigen::Vector3d result = cell * min_frac(r_cell * vd);
+  
+  double sq_norm_min = vd.squaredNorm();
+  
+  if(sq_norm_min <= r2_dist_direct )
+    return result;
+  
+  for(int i = -box_size[0]; i < box_size[0] + 1; i++)
+  {
+    for(int j = -box_size[1]; j < box_size[1] + 1; j++)
+    {
+      for(int k = -box_size[2]; k < box_size[2] + 1; k++)
+      {
+        if(abs(i) + abs(j) + abs(k) == 0 )
+          continue;
+        
+        Vector3d vc = vd - cell * Vector3d(i, j, k);
+        double d = vc.squaredNorm();
+        if(d < sq_norm_min )
+        {
+          sq_norm_min = d;
+          result = vc;
+        }  
+      }
+    }
+  }  
+  
+  return result;
+}
+
+std::vector<Eigen::Vector3d> cryst_tools::min_dist::get_img_dist(const Eigen::Vector3d &vd, 
+                                                                 const Eigen::Vector3i &box) const
+{
+  assert(cell_assigned);
+
+  std::vector<Eigen::Vector3d> result;
+  
+  for(int i = -box[0]; i <= box[0]; i++)
+  {
+    for(int j = -box[1]; j <= box[1]; j++)
+    {
+      for(int k = -box[2]; k <= box[2]; k++)
+      {
+        Vector3d vc = vd - cell * Vector3d(i, j, k);
+        result.push_back(vc);
+      }
+    }
+  }  
+  
+  return result;
+}        
+
+Eigen::Vector3d cryst_tools::min_dist::average_vector(const std::vector<Eigen::Vector3d> &av) const
+{
+  assert(cell_assigned);
+  
+  Vector3d result;
+  
+  result.setZero();
+  
+  for(int i = 0; i < av.size(); i++)
+    result += (*this)(av[i] - av[0]);
+
+  result = av[0] + result / double(av.size());
+  result = (*this)(result);
+  
+  return result;
+  
+}

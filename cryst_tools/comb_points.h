@@ -59,7 +59,8 @@ public:
   {return get_distance(i, j) <= tol_list; };
 public:
   points_clusters();
-  void assign_max_dist(groups_vc &vc);
+  virtual void assign_max_dist(groups_vc &gc);
+  virtual double min_dist_between_groups(groups_vc &gc); 
 };
 
 #endif	/* COMB_POINTS_H */

@@ -23,6 +23,8 @@ public:
   virtual double get_distance(int i, int j) const;
 public:
   points_ND(int num_of_points, int dimension);
+  void create_groups(groups_vc &vc, double tol_list_v, int min_cntr_points)
+  { create_groups_internal(vc, tol_list_v, min_cntr_points); };        
 };
 
 points_ND::points_ND(int num_of_points, int dimension)
