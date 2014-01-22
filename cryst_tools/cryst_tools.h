@@ -64,8 +64,36 @@ namespace cryst_tools {
                                               const Eigen::Vector3i &box) const;
     Eigen::Vector3d average_vector(const std::vector<Eigen::Vector3d> &av) const;
   };
-
+  
 };
+
+//Ewald summation utilites
+namespace cryst_tools {
+
+  class ewald_sum {
+  protected:
+    Eigen::Matrix3d cell;
+    Eigen::Matrix3d r_cell;
+    Eigen::Matrix3d res_cell;
+    double volume;
+    
+    double precision;
+    Eigen::Vector3i box_size;
+    double r_max;
+    double g_max;
+    double eta;
+    
+  public:
+    ewald_sum()
+    { precision = -1; };
+    void set_cell(const Eigen::Matrix3d &cell_v);
+    void set_precision(double N, double precision_v = 1E-8);
+    double get_energy(const Eigen::Vector3d &vd);
+    Eigen::MatrixXd potential_matrix(const std::vector<Eigen::Vector3d> &vd);
+  };
+  
+};
+
 
 
 #endif	/* CRYST_TOOLS_H */

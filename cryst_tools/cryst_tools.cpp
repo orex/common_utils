@@ -468,3 +468,87 @@ Eigen::Vector3d cryst_tools::min_dist::average_vector(const std::vector<Eigen::V
   return result;
   
 }
+
+//Ewald sum
+void cryst_tools::ewald_sum::set_cell(const Eigen::Matrix3d &cell_v)
+{
+  cell = cell_v;
+  r_cell   = cell.inverse();
+  res_cell = 2 * M_PI * (cell.inverse()).transpose();
+  volume = fabs(cell.determinant());
+}
+
+void cryst_tools::ewald_sum::set_precision(double N, double precision_v)
+{
+  precision = precision_v;
+  
+  eta = M_PI * pow(N/volume, 1.0/3.0);
+  r_max = sqrt(-log(precision) / eta);
+  g_max = 2 * sqrt(-log(precision) * eta);
+  
+  //cout << "Eta: " << eta << endl;
+  //cout << "r_max: " << r_max << endl;
+  //cout << "g_max: " << g_max << endl;  
+  
+  Vector3d box_size_d = res_cell.inverse() * Vector3d(g_max, g_max, g_max);
+  for(int i = 0; i < box_size.size(); i++)
+    box_size[i] = max(5, int(abs(box_size_d[i])) + 1);
+}
+
+double cryst_tools::ewald_sum::get_energy(const Eigen::Vector3d &vd)
+{
+  double result = 0;
+  double real_term = 0;
+  double rec_term = 0;
+  bool self_iteraction = false;
+  for(int i = -box_size[0]; i <= box_size[0]; i++)
+  {
+    for(int j = -box_size[1]; j <= box_size[1]; j++)
+    {
+      for(int k = -box_size[2]; k <= box_size[2]; k++)
+      {
+        Vector3d p(i, j, k);
+        double rd = (vd + cell * p).norm();
+
+        // Real-space summation
+        if(rd > 1E-3)
+          real_term += erfc(sqrt(eta) * rd) / rd;
+        else
+          self_iteraction = true;
+
+        if( (i != 0) || (j != 0) || (k != 0) )
+        {
+          // K-space summation
+          Vector3d K = res_cell * p;
+          double K2 = K.squaredNorm();
+          double Kvd = K.transpose() * vd;
+          rec_term += cos(Kvd) * exp(-K2 / (4 * eta) )/ K2;
+        }  
+      }  
+    }
+  }  
+  
+  result = 0.5 * real_term + 0.5 * 4 * M_PI / volume * rec_term;
+  if(self_iteraction)
+    result -= sqrt(eta / M_PI);
+  
+  return result;
+}
+
+Eigen::MatrixXd cryst_tools::ewald_sum::potential_matrix(const std::vector<Eigen::Vector3d> &vd)
+{
+  Eigen::MatrixXd result;
+  
+  result.resize(vd.size(), vd.size());
+  result.setZero();
+  
+  for(int i = 0; i < vd.size(); i++)
+  {
+    for(int j = 0; j < vd.size(); j++)
+    {
+      result(i, j) = get_energy(vd[i] - vd[j]);
+    }  
+  }  
+  
+  return result;
+}        
