@@ -28,7 +28,6 @@ int64_t factorial(int k)
 inline
 int64_t num_combinations(const std::vector<int> &nm)
 {
-
   int64_t down_fact = 1;
   int64_t up_fact = 1;
   int counter = 1;

@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <boost/random.hpp>
 
 namespace array_common
 {
@@ -27,8 +28,31 @@ namespace array_common
       }  
     }
     data.resize(pos_cmb);  
-  }  
-
+  }
+/*
+  template<class InputIterator, class RandomBoostGenerator>
+  InputIterator random_element(InputIterator first, InputIterator last, RandomBoostGenerator &rnd)
+  {
+    int size = distance(first, last);
+    int elm = 
+    for(int i = 0;  )
+  }
+  
+  
+  enum thin_type {ttDelFirst, ttDelLast};
+  //T - container class
+  template <class Container>  
+  void thin_to(Container &data, int target_size, thin_type th)
+  {
+    while (data.size() > target_size) 
+    {
+      if( th == ttDelFirst )
+        data.erase(data.begin());
+      else if( th == ttDelLast )
+        data.erase(--data.end());
+    }        
+  }
+*/
 };
 
 
