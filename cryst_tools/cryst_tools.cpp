@@ -7,7 +7,6 @@
 
 #include <set>
 #include <Eigen/Dense>
-#include <eigen2/Eigen/src/Core/MatrixBase.h>
 #include "cryst_tools.h"
 #include "comb_points.h"
 #include "openbabel/math/vector3.h"
