@@ -173,7 +173,7 @@ void ps_shifts::create_groups(groups_vc &vc, double tol_cart_v)
     sum += abs(mc(i / 3, i % 3));
   }
   tol_list = sqrt(sum) * tol_cart;  
-  create_groups_internal(vc, tol_list, 2);
+  create_groups_internal(vc, tol_list, 10);
 }
 
 void ps_shifts::ps_add_shift(int index, const Vector3d &shift)
