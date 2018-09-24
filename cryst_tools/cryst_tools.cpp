@@ -357,7 +357,7 @@ std::vector<Eigen::Affine3d> cryst_tools::get_all_symmetries(const Eigen::Matrix
   return get_all_symmetries(cell, frac_coords, bc, tol, range);
 }        
 
-void cryst_tools::min_dist::set_cell(const Eigen::Matrix3d &cell_v)
+void cryst_tools::min_dist::set_cell(const Eigen::Matrix3d &cell_v, double tol)
 {
   box_size.setZero();
   

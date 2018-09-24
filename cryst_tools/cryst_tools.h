@@ -48,8 +48,6 @@ namespace cryst_tools {
 namespace cryst_tools {
 
   class min_dist {
-  public:
-    static const double tol = 1E-3;
   protected:
     double r2_dist_direct;
     Eigen::Vector3i box_size;
@@ -58,7 +56,7 @@ namespace cryst_tools {
     bool cell_assigned;
   public:
     min_dist() : cell_assigned(false) {};
-    void set_cell(const Eigen::Matrix3d &cell_v);
+    void set_cell(const Eigen::Matrix3d &cell_v, double tol = 1E-3);
     Eigen::Vector3d operator ()(const Eigen::Vector3d &vd) const;
     std::vector<Eigen::Vector3d> get_img_dist(const Eigen::Vector3d &vd, 
                                               const Eigen::Vector3i &box) const;
