@@ -41,4 +41,8 @@ target_link_libraries(test_cryst_tools ${Boost_LIBRARIES} ${OB_LIB})
 add_test(NAME Test_Cryst_Tools COMMAND test_cryst_tools)
 
 
+add_executable(test_combinatorics test_combinatorics.cpp
+        ${CMAKE_SOURCE_DIR}/others/rnd_utils.cpp)
+target_link_libraries(test_combinatorics ${Boost_LIBRARIES})
+add_test(NAME Test_Combinatorics COMMAND test_combinatorics)
 
