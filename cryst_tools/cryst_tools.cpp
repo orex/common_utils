@@ -9,7 +9,8 @@
 #include <Eigen/Dense>
 #include "cryst_tools.h"
 #include "comb_points.h"
-#include "openbabel/math/vector3.h"
+#include <openbabel/babelconfig.h>
+#include <openbabel/math/vector3.h>
 
 using namespace std;
 using namespace Eigen;
