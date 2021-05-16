@@ -10,6 +10,7 @@
 #include <ctime>
 #include <cmath>
 #include <complex>
+#include <random>
 #include <sys/time.h>
 
 #include <boost/format.hpp>
@@ -97,7 +98,7 @@ BOOST_AUTO_TEST_CASE(Test_safe_mult_simple)
 
 BOOST_AUTO_TEST_CASE(Test_safe_mult_random)
 {
-  boost::mt19937 rnd;
+  std::mt19937 rnd;
   struct timeval tv;
   gettimeofday(&tv, NULL);
   unsigned seed = static_cast<unsigned> (tv.tv_usec);
@@ -105,13 +106,13 @@ BOOST_AUTO_TEST_CASE(Test_safe_mult_random)
   BOOST_WARN(seed);
 
   for(int i = 0; i < 200000; i++) {
-    int maxn = get_rnd_int_value_in_interval(rnd, 0, 10);
+    int maxn = std::uniform_int_distribution<int>(0, 10)(rnd);
     std::vector<int> vm;
     vm.reserve(maxn);
     bool all_positive = true;
     for(int j = 0; j < maxn; j++)
     {
-      int a = get_rnd_int_value_in_interval(rnd, -32767, 32767);
+      int a = std::uniform_int_distribution<int>(-32767, 32767)(rnd);
       all_positive = all_positive && (a > 0);
       vm.push_back(a);
     }
@@ -166,6 +167,61 @@ BOOST_AUTO_TEST_CASE(Test_combinatorics_ref) {
     if(!good)
       result = -1;
     BOOST_CHECK_MESSAGE(result == ref, std::string("Data: ") + line);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(Test_next_permutation_it_rnd) {
+
+  std::mt19937 rnd;
+  /*struct timeval tv;
+  gettimeofday(&tv, NULL);
+  unsigned seed = static_cast<unsigned> (tv.tv_usec);
+  rnd.seed(seed);
+  BOOST_WARN(seed);*/
+
+  for(int i = 0; i < 12; i++) {
+    std::vector<int> v(i, 0);
+    for(int j = 0; j < v.size(); j++) {
+      v[j] = std::uniform_int_distribution<int>(-1, 4)(rnd);
+    }
+    std::sort(v.begin(), v.end());
+    while(true) {
+      auto vn = v;
+      auto vl = v;
+      auto it = next_permutation_it(vn.begin(), vn.end());
+      bool b = std::next_permutation(vl.begin(), vl.end());
+      BOOST_CHECK_EQUAL(b, (it != vn.end()) );
+      BOOST_CHECK_EQUAL_COLLECTIONS(vn.begin(), vn.end(), vl.begin(), vl.end());
+      if( it == vn.end() )
+        break;
+      int ix = std::distance(vn.begin(), it);
+      BOOST_CHECK_NE(v[ix], vn[ix]);
+      BOOST_CHECK_EQUAL_COLLECTIONS(vn.begin(), vn.begin() + ix,
+                                    vl.begin(), vl.begin() + ix);
+      swap(v, vn);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(Test_permutation_index_rnd) {
+  std::mt19937 rnd;
+  /*struct timeval tv;
+  gettimeofday(&tv, NULL);
+  unsigned seed = static_cast<unsigned> (tv.tv_usec);
+  rnd.seed(seed);
+  BOOST_WARN(seed);*/
+
+  for(int i = 0; i < 12; i++) {
+    std::vector<int> v(i, 0);
+    for(int j = 0; j < v.size(); j++) {
+      v[j] = std::uniform_int_distribution<int>(-1, 4)(rnd);
+    }
+    std::sort(v.begin(), v.end());
+    int64_t count = 0;
+    do {
+      BOOST_CHECK_EQUAL(permutation_index<int64_t>(v.begin(), v.end()), count);
+      count++;
+    } while(std::next_permutation(v.begin(), v.end()));
   }
 }
 

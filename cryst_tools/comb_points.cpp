@@ -6,100 +6,97 @@
  */
 
 #include "comb_points.h"
-#include "others/rnd_utils.h"
-#include "containers/array_common.hpp"
-#include <boost/range/algorithm/random_shuffle.hpp>
-#include <map>
 
+#include <map>
 #include <cassert>
 #include <algorithm>
-#include <ctime>
 
 using namespace std;
 
-points_clusters::points_clusters()
+void points_clusters::get_possible_connections(index_conn &ic, double tol,
+                                               int min_cntr_points) const
 {
-  possible_connections = 0;
-  total_connection = 0;  
-  rnd_gen = create_rnd_gen();
-  //rnd_gen.seed(1);
-}
-
-void points_clusters::get_dist_vc_map(int index_cntr, vc_dist &dst_array, map_dist &dst_map)
-{
-  dst_map.clear();
-  dst_array.resize(get_points_size(), 0.0);
-  for(int i = 0; i < get_points_size(); i++)
-  {
-    double dist = get_distance(index_cntr, i);
-    dst_array[i] = dist;
-    dst_map.insert(std::pair<double, int>(dist, i));
-  }
-}
-
-int points_clusters::get_possible_connections(index_conn &ic, double tol,
-                                               int min_cntr_points)
-{
-  vector<cmb_dist> dist_cntr;
-  
-  dist_cntr.resize(min_cntr_points);
-
-  for(int i = 0; i < dist_cntr.size(); i++)
-  {
-    dist_cntr[i].index_cntr = 
-        get_rnd_int_value_in_interval(rnd_gen, 0, get_points_size() - 1);
-    get_dist_vc_map(dist_cntr[i].index_cntr, dist_cntr[i].dst_array, dist_cntr[i].dst_map);
-  }
-  
-  int conn_num = 0;
   ic.resize(get_points_size());
+  if( get_points_size() < 10 || min_cntr_points == 0 ) {
+    for(int i = 0; i < ic.size(); i++) {
+      ic[i].clear();
+      for(int j = 0; j < ic.size(); j++) {
+        if( i != j )
+          ic[i].emplace_back(j);
+      }
+    }
+    return;
+  }
+
+  vector<cmb_dist> dist_cntr;
+
+  min_cntr_points = std::min<int>(min_cntr_points, get_points_size());
+
+  int ci = 0;
+  for(int i = 0; i < min_cntr_points; i++) {
+    dist_cntr.emplace_back();
+    auto & cd = dist_cntr.back();
+    cd.index_cntr = ci;
+    cd.dst_array.resize(get_points_size());
+    cd.dst_map.resize(get_points_size());
+    pair<double, int> max_dist(0, 0);
+    for(int j = 0; j < get_points_size(); j++) {
+      double dst = get_distance(ci, j);
+      cd.dst_array[j] = dst;
+      cd.dst_map[j] = {dst, j};
+      double td = 0;
+      for(int k = 0; k < dist_cntr.size(); k++) {
+        td += std::sqrt(get_distance(dist_cntr[k].index_cntr, j));
+      }
+      max_dist = std::max(max_dist, {td, j});
+    }
+    sort(cd.dst_map.begin(), cd.dst_map.end());
+    ci = max_dist.second;
+  }
   
-  for(int i = 0; i < ic.size(); i++)
-  {
-    std::vector<int> ms;
-    ms.clear();
-    ms.reserve(ic.size() / 10);
-    for(int j = 0; j < dist_cntr.size(); j++)
-    {
+  std::vector<int> ms;
+  ms.resize(ic.size(), 0);
+  std::vector<std::pair<map_dist::const_iterator, map_dist::const_iterator> > vm(dist_cntr.size());
+  for(int i = 0; i < ic.size(); i++) {
+    for(int j = 0; j < dist_cntr.size(); j++) {
       double dst = dist_cntr[j].dst_array[i];
-      map_dist::const_iterator min_it = dist_cntr[j].dst_map.lower_bound(dst - tol);
-      map_dist::const_iterator max_it = dist_cntr[j].dst_map.upper_bound(dst + tol);
-      for(map_dist::const_iterator it = min_it; it != max_it; ++it)
-      {  
-        if( it->second != i )
-          ms.push_back(it->second);
-      }  
-      
-      if(j != 0)
-        array_common::delete_singles(ms);
+      const auto & cd = dist_cntr[j].dst_map;
+      auto itl = lower_bound(cd.cbegin(), cd.cend(), make_pair(dst - tol, 0));
+      auto ith = upper_bound(itl, cd.cend(), make_pair(dst + tol, 0));
+      vm[j] = {itl, ith};
+    }
+    sort(vm.begin(), vm.end(), [](const auto a, const auto b) {
+      return std::distance(a.first, a.second) < std::distance(b.first, b.second);
+    });
+
+    int mxc = std::min<int>(3, vm.size());
+    for(int j = 0; j < mxc; j++) {
+      for(auto it = vm[j].first; it != vm[j].second; ++it)
+        if( j == 0 )
+          ms[it->second] = 1;
+        else
+          ms[it->second]++;
     }
     ic[i].clear();
-    ic[i].insert(ms.begin(), ms.end());
-    
-    conn_num += ms.size();
+    ic[i].reserve(std::distance(vm.front().first, vm.front().second));
+    for(auto it = vm.front().first; it != vm.front().second; ++it) {
+      if( i != it->second && ms[it->second] == mxc )
+        ic[i].emplace_back(it->second);
+    }
   }
-
-  return conn_num;
 }
 
-int points_clusters::verify_connections(index_conn &ic)
-{
+int points_clusters::verify_connections(index_conn &ic) const {
   int result = 0;
-  
-  for(int i = 0; i < ic.size(); i++)
-  {
-    set<int>::iterator it_next;
-    for(set<int>::iterator it = ic[i].begin(); it != ic[i].end(); it = it_next)
-    {
-      it_next = it;
-      ++it_next;
-      if(!is_connected(i, *it))
-        ic[i].erase(it);
-      else
-        result++;
-    }  
-  }
 
+  for (int i = 0; i < ic.size(); i++) {
+    auto it = std::remove_if(ic[i].begin(), ic[i].end(),
+                             [this, i](int a) -> bool {
+                               return !is_connected(i, a);
+                             });
+    ic[i].erase(it, ic[i].end());
+    result += ic[i].size();
+  }
   return result;
 }
 
@@ -123,7 +120,7 @@ void points_clusters::assign_groups(const index_conn &ic, groups_vc &grp)
       //set<int>::const_iterator b_it = upper_bound(ic[i].begin(), ic[i].end(), i);
       int min_grp_num = group_num[i];
       int max_grp_num = group_num[i];
-      for(set<int>::const_iterator it = ic[i].begin(); it != ic[i].end(); ++it)
+      for(auto it = ic[i].cbegin(); it != ic[i].cend(); ++it)
       {  
         min_grp_num = min(min_grp_num, group_num[*it]);
         max_grp_num = max(max_grp_num, group_num[*it]);
@@ -131,7 +128,7 @@ void points_clusters::assign_groups(const index_conn &ic, groups_vc &grp)
       assert(min_grp_num <= max_grp_num);
       if( min_grp_num <  max_grp_num ) 
       {  
-        for(set<int>::const_iterator it = ic[i].begin(); it != ic[i].end(); ++it)
+        for(auto it = ic[i].cbegin(); it != ic[i].cend(); ++it)
           group_num[*it] = min_grp_num;
         changed = true;
       }  
@@ -160,7 +157,7 @@ void points_clusters::assign_groups(const index_conn &ic, groups_vc &grp)
   for(int i = 0; i < grp.size(); i++)
   {
     int min_con = ic[*grp[i].indexes.begin()].size();
-    int max_con = ic[*grp[i].indexes.begin()].size();    
+    int max_con = min_con;
     
     for(set<int>::const_iterator it  = grp[i].indexes.begin(); 
                                  it != grp[i].indexes.end(); ++it)
@@ -172,9 +169,6 @@ void points_clusters::assign_groups(const index_conn &ic, groups_vc &grp)
     assert(min_con <= max_con);
     assert(max_con < grp[i].indexes.size());
     
-    grp[i].unique_conn = grp[i].indexes.size() == min_con + 1;
-    
-    //assert(grp[i].unique_conn);
   }
 }
 
@@ -183,8 +177,8 @@ void points_clusters::create_groups_internal(groups_vc &vc, double tolerance_v, 
   tol_list = tolerance_v;
   
   index_conn ic;
-  possible_connections = get_possible_connections(ic, tol_list, min_cntr_points);
-  total_connection = verify_connections(ic);
+  get_possible_connections(ic, tol_list, min_cntr_points);
+  verify_connections(ic);
   assign_groups(ic, vc);
 }
 

@@ -12,22 +12,14 @@ add_executable(test_expc test_expc.cpp)
 target_link_libraries(test_expc ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} quadmath)
 add_test(NAME Test_expc_function COMMAND test_expc)
 
-add_executable(test_rnd test_rnd.cpp
-                        ${CMAKE_SOURCE_DIR}/others/rnd_utils.cpp)
-target_link_libraries(test_rnd ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${Boost_RANDOM_LIBRARY})
-add_test(NAME Test_random_array COMMAND test_rnd)
-
 add_executable(test_comb_points test_comb_points.cpp
-                        ${CMAKE_SOURCE_DIR}/cryst_tools/comb_points.cpp
-                        ${CMAKE_SOURCE_DIR}/others/rnd_utils.cpp)
+                        ${CMAKE_SOURCE_DIR}/cryst_tools/comb_points.cpp)
 target_link_libraries(test_comb_points ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ${Boost_RANDOM_LIBRARY})
 add_test(NAME Test_Comb_Points COMMAND test_comb_points)
 
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-find_library(OB_LIB openbabel)
-include_directories(/usr/local/include/openbabel-2.0/)
 
 add_definitions(-DCT_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/data_cryst_tools")
 
@@ -35,14 +27,12 @@ add_definitions(-DCT_DATA_DIR="${CMAKE_SOURCE_DIR}/tests/data_cryst_tools")
 
 add_executable(test_cryst_tools test_cryst_tools.cpp
                         ${CMAKE_SOURCE_DIR}/cryst_tools/comb_points.cpp
-                        ${CMAKE_SOURCE_DIR}/cryst_tools/cryst_tools.cpp
-                        ${CMAKE_SOURCE_DIR}/others/rnd_utils.cpp)
-target_link_libraries(test_cryst_tools ${Boost_LIBRARIES} ${OB_LIB})
+                        ${CMAKE_SOURCE_DIR}/cryst_tools/cryst_tools.cpp)
+target_link_libraries(test_cryst_tools ${Boost_LIBRARIES} PkgConfig::libOB)
 add_test(NAME Test_Cryst_Tools COMMAND test_cryst_tools)
 
 
-add_executable(test_combinatorics test_combinatorics.cpp
-        ${CMAKE_SOURCE_DIR}/others/rnd_utils.cpp)
+add_executable(test_combinatorics test_combinatorics.cpp)
 target_link_libraries(test_combinatorics ${Boost_LIBRARIES})
 add_test(NAME Test_Combinatorics COMMAND test_combinatorics)
 

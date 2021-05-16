@@ -11,11 +11,26 @@
 #include <vector>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <Eigen/StdVector>
+
+typedef std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d> > vector_Affine3d;
+
 
 namespace cryst_tools {
   typedef std::vector< std::vector<Eigen::Vector3d> > vc_sets;
 
-  Eigen::Vector3d min_frac(const Eigen::Vector3d &frac);
+  inline Eigen::Vector3d min_frac(const Eigen::Vector3d &frac) {
+    Eigen::Vector3d result;
+
+    for(int i = 0; i < 3; i++) {
+      if( std::abs(frac[i]) < 0.5 )
+        result[i] = frac[i];
+      else
+        result[i] = std::remainder(frac[i], 1.0);
+    }
+
+    return result;
+  }
   Eigen::Vector3d norm_frac(const Eigen::Vector3d &frac);
 
   std::vector<Eigen::Matrix3d> get_symmetries(const Eigen::Matrix3d &cell,
@@ -31,12 +46,12 @@ namespace cryst_tools {
           const std::vector<Eigen::Vector3d> &frac_c2,
           double tolerance);
 
-  std::vector<Eigen::Affine3d> get_all_symmetries(const Eigen::Matrix3d &cell,
+  vector_Affine3d get_all_symmetries(const Eigen::Matrix3d &cell,
           const vc_sets &frac_coords,
           const double tol,
           const int range = 2);
 
-  std::vector<Eigen::Affine3d> get_all_symmetries(const Eigen::Matrix3d &cell,
+vector_Affine3d get_all_symmetries(const Eigen::Matrix3d &cell,
           const vc_sets &frac_coords,
           const std::vector<bool> &all_symm,
           const double tol,
@@ -69,9 +84,14 @@ namespace cryst_tools {
 namespace cryst_tools {
 
   class ewald_sum {
-  protected:
+   private:
+    struct cell_data_t {
+      Eigen::Vector3d shift;
+      Eigen::Vector3d recl_K;
+      double exp_recl_term;
+    };
+   private:
     Eigen::Matrix3d cell;
-    Eigen::Matrix3d r_cell;
     Eigen::Matrix3d res_cell;
     double volume;
     
@@ -80,14 +100,15 @@ namespace cryst_tools {
     double r_max;
     double g_max;
     double eta;
-    
+
+    std::vector<cell_data_t> sd;
   public:
     ewald_sum()
     { precision = -1; };
     void set_cell(const Eigen::Matrix3d &cell_v);
     void set_precision(double N, double precision_v = 1E-8);
-    double get_energy(const Eigen::Vector3d &vd);
-    Eigen::MatrixXd potential_matrix(const std::vector<Eigen::Vector3d> &vd);
+    double get_energy(const Eigen::Vector3d &vd) const;
+    Eigen::MatrixXd potential_matrix(const std::vector<Eigen::Vector3d> &vd) const;
   };
   
 };

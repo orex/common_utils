@@ -12,7 +12,9 @@
 #include <boost/filesystem.hpp>
 
 #include "cryst_tools/cryst_tools.h"
-#include "openbabel/mol.h"
+#include <openbabel/generic.h>
+#include <openbabel/mol.h>
+#include <openbabel/atom.h>
 #include "cryst_tools/comb_points.h"
 
 #include <openbabel/obconversion.h>
@@ -86,8 +88,8 @@ BOOST_AUTO_TEST_CASE(Test_first)
       Matrix3d cell;
       
       cell = b2e_matrix<double>(p1_unitcell->GetCellMatrix().transpose());
-      
-      vector<Affine3d> syms = get_all_symmetries(cell, frc, 1E-2, 1);
+
+      vector_Affine3d syms = get_all_symmetries(cell, frc, 1E-2, 1);
       
       /*
       for(int i = 0; i < syms.size(); i++)

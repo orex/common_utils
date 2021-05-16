@@ -186,6 +186,208 @@ std::vector<T> create_start_combination(const std::map<T, int> &nm)
   return result;
 }
 
+template <class _Compare, class _ConstBidirectionalIterator, typename IndexType>
+inline IndexType __permutation_count(_ConstBidirectionalIterator __first,
+                              _ConstBidirectionalIterator __last, _Compare __comp) {
+  static_assert(std::is_arithmetic<IndexType>::value);
+  _ConstBidirectionalIterator __it = __last;
+  if( __first == __last )
+    return IndexType(0);
+
+  auto eq = [&__comp](const typename _ConstBidirectionalIterator::value_type &__a,
+      const typename _ConstBidirectionalIterator::value_type &__b) -> bool {
+    return !__comp(__a, __b) && !__comp(__b, __a);
+  };
+
+  std::vector<IndexType> __mx;
+  __mx.reserve(16);
+
+  IndexType result(1);
+  IndexType len(1);
+  for(auto it = __first; it != __last; ++it) {
+    auto __itm = std::find_if(__mx.crbegin(), __mx.crend(), eq);
+    IndexType l = (__itm == __mx.crend()) ? IndexType(0) : (*__itm + 1);
+    IndexType ld = result / l, lr = result % l;
+    result = ld * len + (lr * len) / l;
+    len++;
+  }
+
+  return result;
+}
+
+template <class _Compare, class _BidirectionalIterator>
+inline
+_BidirectionalIterator
+__next_permutation_it(_BidirectionalIterator __first, _BidirectionalIterator __last, _Compare __comp)
+{
+  _BidirectionalIterator __i = __last;
+  if (__first == __last || __first == --__i)
+    return __last;
+  while (true)
+  {
+    _BidirectionalIterator __ip1 = __i;
+    if (__comp(*--__i, *__ip1))
+    {
+      _BidirectionalIterator __j = __last;
+      while (!__comp(*__i, *--__j))
+        ;
+      std::swap(*__i, *__j);
+      std::reverse(__ip1, __last);
+      return __i;
+    }
+    if (__i == __first)
+    {
+      std::reverse(__first, __last);
+      return __last;
+    }
+  }
+}
+
+template <class _BidirectionalIterator, class _Compare>
+inline
+_BidirectionalIterator
+next_permutation_it(_BidirectionalIterator __first, _BidirectionalIterator __last, _Compare __comp)
+{
+  return __next_permutation_it(__first, __last, __comp);
+}
+
+template <class _BidirectionalIterator>
+inline
+_BidirectionalIterator
+next_permutation_it(_BidirectionalIterator __first, _BidirectionalIterator __last)
+{
+  return __next_permutation_it(__first, __last,
+                          std::less<typename std::iterator_traits<_BidirectionalIterator>::value_type>());
+}
+
+template <class _Compare, class _ConstBidirectionalIterator, typename IndexType>
+inline
+IndexType __permutation_index(_ConstBidirectionalIterator __first, _ConstBidirectionalIterator __last, _Compare __comp) {
+  static_assert(std::is_arithmetic<IndexType>::value);
+  IndexType result(0);
+  _ConstBidirectionalIterator __it = __last;
+  if( __first == __last )
+    return result;
+
+  typedef std::pair<_ConstBidirectionalIterator, IndexType> pr_t;
+  std::vector<pr_t> __mx;
+  __mx.reserve(16);
+
+  auto cmp = [&__comp](const pr_t &__a, const typename _ConstBidirectionalIterator::value_type &__b) -> bool {
+    return __comp(*(__a.first), __b);
+  };
+  int len = 0;
+  IndexType tot_prm = 1;
+  do {
+    --__it;
+    auto __itmx = std::lower_bound(__mx.begin(), __mx.end(), *(__it), cmp);
+    if( __itmx == __mx.end() || __comp(*(__it), *(__itmx->first)) ) {
+      __itmx = __mx.template emplace(__itmx, __it, 0);
+    }
+    __itmx->second++;
+    IndexType ms(0);
+    for(auto __itx = __mx.begin(); __itx != __itmx; ++__itx) {
+      ms += __itx->second;
+    }
+    result += (tot_prm / __itmx->second) * ms + ((tot_prm % __itmx->second) * ms) / __itmx->second;
+    len++;
+    tot_prm = (tot_prm / __itmx->second) * len + ((tot_prm % __itmx->second) * len) / __itmx->second;
+  } while( __it != __first );
+  return result;
+}
+
+
+template < typename IndexType, class _ConstBidirectionalIterator, class _Compare>
+inline
+IndexType
+permutation_index(_ConstBidirectionalIterator __first, _ConstBidirectionalIterator __last, _Compare __comp)
+{
+  return __permutation_index<_Compare, _ConstBidirectionalIterator, IndexType>(__first, __last, __comp);
+}
+
+template <typename IndexType, class _ConstBidirectionalIterator>
+inline
+IndexType
+permutation_index(_ConstBidirectionalIterator __first, _ConstBidirectionalIterator __last)
+{
+  typedef std::less<typename std::iterator_traits<_ConstBidirectionalIterator>::value_type> less_t;
+  return __permutation_index<less_t, _ConstBidirectionalIterator, IndexType>(__first, __last, less_t());
+}
+
+/*
+template<typename IndexType>
+struct k_permutation_info_t {
+  IndexType cbefore_last;
+  IndexType cafter_first;
+  IndexType cloops;
+  k_permutation_info_t(IndexType _cbefore_last, IndexType _cafter_first, IndexType _cloops) :
+      cbefore_last(_cbefore_last), cafter_first(_cafter_first), cloops(_cloops) {};
+};
+
+template <class _Compare, class _BidirectionalIterator, typename IndexType>
+inline IndexType
+__num_permutations(_BidirectionalIterator __first, _BidirectionalIterator __last, _Compare __comp) {
+
+}
+
+
+
+template <class _Compare, class _BidirectionalIterator, typename IndexType>
+inline k_permutation_info_t<IndexType>
+__next_k_permutation(_BidirectionalIterator __first, _BidirectionalIterator __last, IndexType k, _Compare __comp) {
+  {
+    _BidirectionalIterator __i = __last;
+    if (__first == __last || __first == --__i)
+      return k_permutation_info_t<IndexType>(0, 0, k);
+  }
+
+  k_permutation_info_t<IndexType> result(0, 0, 0);
+  if( k == 0 )
+    return result;
+
+  _BidirectionalIterator __isp = __last;
+  _BidirectionalIterator __ism = __last;
+  __ism--;
+  while (k > 0) {
+    if (__comp(*__ism, *__isp)) {
+      _BidirectionalIterator __j = __last;
+      while (!__comp(*__ism, *--__j))
+        ;
+      std::swap(*__ism, *__j);
+      IndexType __q = __permutation_count<_Compare, _BidirectionalIterator, IndexType>(__isp, __last, __comp);
+      if( __q > k ) {
+        k--;
+        result.cbefore_last++;
+        std::reverse(__isp, __last);
+        break;
+      } else {
+        k -= __q;
+        result.cbefore_last += __q;
+      }
+    } else {
+      if( __ism == __first ) {
+        result.cbefore_last++;
+        result.cloops = 1;
+        k--;
+        IndexType __tm = __permutation_count<_Compare, _BidirectionalIterator, IndexType>(__first, __last, __comp);
+        result.cloops += k / __tm;
+        k = k % __tm;
+        result.cafter_first = k;
+        std::reverse(__first, __last);
+        __isp = __ism;
+        break;
+      }
+      __isp = __ism;
+      __ism--;
+    }
+  }
+
+
+
+}
+
+ */
+
 
 #endif	/* COMBINATORICS_H */
 

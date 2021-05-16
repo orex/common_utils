@@ -9,8 +9,6 @@
 #include <Eigen/Dense>
 #include "cryst_tools.h"
 #include "comb_points.h"
-#include <openbabel/babelconfig.h>
-#include <openbabel/math/vector3.h>
 
 using namespace std;
 using namespace Eigen;
@@ -60,15 +58,6 @@ struct Vector3d_comp_cl
   {  return Vector_compare(v1, v2) < 0;}
 };
 
-Eigen::Vector3d cryst_tools::min_frac(const Eigen::Vector3d &frac)
-{
-  Vector3d result;
-  
-  for(int i = 0; i < 3; i++)
-    result[i] = frac[i] - floor(frac[i] + 0.5);
-  
-  return result;
-}
 
 Eigen::Vector3d cryst_tools::norm_frac(const Eigen::Vector3d &frac)
 {
@@ -100,7 +89,7 @@ std::vector<Eigen::Matrix3d> cryst_tools::get_symmetries(const Eigen::Matrix3d &
       B(i / 3, i % 3) = p % mult - range;
       p /= mult;
     }
-    if( abs(B.determinant()) != 1) continue;
+    if( std::abs(B.determinant()) != 1) continue;
 
     Matrix3d A;
     A = cell * B * r_cell;
@@ -130,10 +119,10 @@ public:
   virtual double get_distance(int i, int j) const;
   virtual bool is_connected(int i, int j) const;
 public:
-  ps_shifts(const Matrix3d &cell_v);
+  explicit ps_shifts(const Matrix3d &cell_v);
   void ps_add_shift(int index, const Vector3d &shift);
   Vector3d average_vector(const cmb_group &cbg);
-  bool total_shift(const cmb_group &cbg, int poins_num);
+  bool total_shift(const cmb_group &cbg, int poins_num) const;
   void create_groups(groups_vc &vc, double tol_cart_v);    
   virtual void assign_max_dist(groups_vc &gc);  
 };
@@ -198,7 +187,7 @@ Vector3d ps_shifts::average_vector(const cmb_group &cbg)
   return result;
 }
 
-bool ps_shifts::total_shift(const cmb_group &cbg, int poins_num)
+bool ps_shifts::total_shift(const cmb_group &cbg, int poins_num) const
 {
   bool result;
   
@@ -244,9 +233,6 @@ std::vector<Eigen::Vector3d> cryst_tools::get_shifts(const Eigen::Matrix3d &sym_
                                                      const std::vector<Eigen::Vector3d> &frac_coords,
                                                      double tolerance, bool all_symmetric)
 {
-  typedef list<Vector3d> o_list;
-  o_list out_list;
-  
   ps_shifts ps(cell);
   
   for(int i = 0; i < frac_coords.size(); i++)  
@@ -263,21 +249,18 @@ std::vector<Eigen::Vector3d> cryst_tools::get_shifts(const Eigen::Matrix3d &sym_
   
   ps.create_groups(gvc, tolerance);
   ps.assign_max_dist(gvc);
-  
-  out_list.clear();  
+
+  vector<Vector3d> result;
   for(int i = 0; i < gvc.size(); i++)
   {  
     assert(gvc[i].max_dist < tolerance);
-    assert(gvc[i].unique_conn);
     if(!all_symmetric)
-      out_list.push_back(ps.average_vector(gvc[i]));
+      result.push_back(ps.average_vector(gvc[i]));
     else if( ps.total_shift(gvc[i], frac_coords.size()) )
-      out_list.push_back(ps.average_vector(gvc[i]));
+      result.push_back(ps.average_vector(gvc[i]));
   }
   
-  vector<Vector3d> result;
-  result.resize(out_list.size());
-  copy(out_list.begin(), out_list.end(), result.begin());
+  result.shrink_to_fit();
     
   return result;
 }
@@ -301,18 +284,17 @@ std::vector<Eigen::Vector3d> cryst_tools::shifts_intersect(const Eigen::Matrix3d
   }  
   
   return result;
-}        
+}
 
-
-std::vector<Eigen::Affine3d> cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
+vector_Affine3d cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
                                                              const vc_sets &frac_coords,
                                                              const std::vector<bool> &all_symm, 
                                                              const double tol,
                                                              const int range)
 {
   assert(all_symm.size() == frac_coords.size());
-  
-  vector<Affine3d> result;
+
+  vector_Affine3d result;
   result.clear();
   
   vector<Matrix3d> symm = get_symmetries(cell, range);
@@ -343,11 +325,11 @@ std::vector<Eigen::Affine3d> cryst_tools::get_all_symmetries(const Eigen::Matrix
     }
   }
   return result;  
-}        
+}
 
 
 
-std::vector<Eigen::Affine3d> cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
+vector_Affine3d cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
                                                              const vc_sets &frac_coords,
                                                              const double tol,        
                                                              const int range)
@@ -473,9 +455,8 @@ Eigen::Vector3d cryst_tools::min_dist::average_vector(const std::vector<Eigen::V
 void cryst_tools::ewald_sum::set_cell(const Eigen::Matrix3d &cell_v)
 {
   cell = cell_v;
-  r_cell   = cell.inverse();
   res_cell = 2 * M_PI * (cell.inverse()).transpose();
-  volume = fabs(cell.determinant());
+  volume = std::abs(cell.determinant());
 }
 
 void cryst_tools::ewald_sum::set_precision(double N, double precision_v)
@@ -493,62 +474,84 @@ void cryst_tools::ewald_sum::set_precision(double N, double precision_v)
   Vector3d box_size_d = res_cell.inverse() * Vector3d(g_max, g_max, g_max);
   for(int i = 0; i < box_size.size(); i++)
     box_size[i] = max(5, int(abs(box_size_d[i])) + 1);
+
+  sd.clear();
+  sd.reserve( (2 * box_size[0] + 1) * (2 * box_size[1] + 1) * (2 * box_size[2] + 1));
+  for(int i = -box_size[0]; i <= box_size[0]; i++) {
+    for (int j = -box_size[1]; j <= box_size[1]; j++) {
+      for (int k = -box_size[2]; k <= box_size[2]; k++) {
+        Vector3d p(i, j, k);
+        sd.emplace_back();
+        sd.back().shift = cell * p;
+        sd.back().recl_K = res_cell * p;
+        double K2 = sd.back().recl_K.squaredNorm();
+        sd.back().exp_recl_term = exp(-K2 / (4 * eta) ) / K2;
+      }
+    }
+  }
 }
 
-double cryst_tools::ewald_sum::get_energy(const Eigen::Vector3d &vd)
+double cryst_tools::ewald_sum::get_energy(const Eigen::Vector3d &vd) const
 {
-  double result = 0;
   double real_term = 0;
   double rec_term = 0;
   bool self_iteraction = false;
-  for(int i = -box_size[0]; i <= box_size[0]; i++)
-  {
-    for(int j = -box_size[1]; j <= box_size[1]; j++)
-    {
-      for(int k = -box_size[2]; k <= box_size[2]; k++)
-      {
+  double sqeta = sqrt(eta);
+  int d_pos = 0;
+  for(int i = -box_size[0]; i <= box_size[0]; i++) {
+    for(int j = -box_size[1]; j <= box_size[1]; j++) {
+      for(int k = -box_size[2]; k <= box_size[2]; k++) {
+        const auto &cv = sd[d_pos++];
         Vector3d p(i, j, k);
-        double rd = (vd + cell * p).norm();
+        // double rd = (vd + cell * p).norm();
+        double rd = (vd + cv.shift).norm();
 
         // Real-space summation
         if(rd > 1E-3)
-          real_term += erfc(sqrt(eta) * rd) / rd;
+          real_term += erfc(sqeta * rd) / rd;
         else
           self_iteraction = true;
 
         if( (i != 0) || (j != 0) || (k != 0) )
         {
           // K-space summation
-          Vector3d K = res_cell * p;
-          double K2 = K.squaredNorm();
-          double Kvd = K.transpose() * vd;
-          rec_term += cos(Kvd) * exp(-K2 / (4 * eta) )/ K2;
+          // Vector3d K = res_cell * p;
+          // double K2 = K.squaredNorm();
+          // double Kvd = K.transpose() * vd;
+          // rec_term += cos(Kvd) * exp(-K2 / (4 * eta) )/ K2;*/
+          double Kvd = cv.recl_K.dot(vd);
+          rec_term += cos(Kvd) * cv.exp_recl_term;
         }  
       }  
     }
   }  
   
-  result = 0.5 * real_term + 0.5 * 4 * M_PI / volume * rec_term;
+  double result = 0.5 * real_term + 0.5 * 4 * M_PI / volume * rec_term;
   if(self_iteraction)
     result -= sqrt(eta / M_PI);
   
   return result;
 }
 
-Eigen::MatrixXd cryst_tools::ewald_sum::potential_matrix(const std::vector<Eigen::Vector3d> &vd)
+Eigen::MatrixXd cryst_tools::ewald_sum::potential_matrix(const std::vector<Eigen::Vector3d> &vd) const
 {
   Eigen::MatrixXd result;
   
   result.resize(vd.size(), vd.size());
   result.setZero();
-  
+
   for(int i = 0; i < vd.size(); i++)
   {
-    for(int j = 0; j < vd.size(); j++)
+    for(int j = i + 1; j < vd.size(); j++)
     {
-      result(i, j) = get_energy(vd[i] - vd[j]);
-    }  
-  }  
-  
+      double eng = get_energy(vd[i] - vd[j]);
+      result(i, j) = eng;
+      result(j, i) = eng;
+    }
+  }
+  double eng_zero = get_energy(Vector3d::Zero());
+  for(int i = 0; i < vd.size(); i++) {
+    result(i, i) = eng_zero;
+  }
   return result;
 }        

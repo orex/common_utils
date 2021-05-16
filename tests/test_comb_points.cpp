@@ -70,10 +70,7 @@ bool groups_equivalent(const groups_vc &g1, const groups_vc &g2)
 
   for(int i = 0; i < g1.size(); i++)  
   {
-    result = g1[i].unique_conn == g2[i].unique_conn;
-    if(!result)
-      break;
-    
+
     result = g1[i].indexes == g2[i].indexes;
     if(!result)
       break;
@@ -188,8 +185,6 @@ BOOST_AUTO_TEST_CASE(Test_random_points_comb_3D)
       pt.create_groups(gvc, tol, j);
       pt.assign_max_dist(gvc);
       cout << "Num reference points: " << j << endl;
-      cout << "Raw num of connection: " << pt.possible_connections << endl;
-      cout << "Final connections: " << pt.total_connection << endl;
       cout << "Number of groups: " << gvc.size() << endl;
       
       //Compare with previous groups
@@ -222,15 +217,7 @@ BOOST_AUTO_TEST_CASE(Test_random_points_comb_3D)
     for(int j = 0; j < gvc_ref.size(); j++)    
       BOOST_CHECK(group_connected(pt, gvc_ref[j], tol));
     
-    double m_dist;
-    //Check uniforming of groups
-    for(int j = 0; j < gvc_ref.size(); j++)    
-    {  
-      BOOST_CHECK_EQUAL(group_uniform(pt, gvc_ref[j], tol, m_dist), gvc_ref[j].unique_conn);
-      //Check distances
-      BOOST_CHECK_EQUAL(gvc_ref[j].max_dist, m_dist);
-    }  
-  }  
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

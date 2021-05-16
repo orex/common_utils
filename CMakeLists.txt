@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.2)
 
 project(common_utils)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
@@ -12,8 +12,10 @@ else()
   message(STATUS "No Boost::Test found. All tests have been disabled.")
 endif()  
 
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_BUILD_TYPE Release)
+find_package(PkgConfig)
+pkg_check_modules(libOB REQUIRED IMPORTED_TARGET openbabel-3)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -8,37 +8,24 @@
 #ifndef RND_UTILS_H
 #define	RND_UTILS_H
 
-#include <boost/random.hpp>
+#include <random>
 #include <vector>
 #include <algorithm>
 
-boost::mt19937 create_rnd_gen();
-
-double get_rnd_value_in_interval(boost::mt19937 &rng, double min, double max);
-int get_rnd_int_value_in_interval(boost::mt19937 &rng, int min, int max);
-
-std::vector<int> get_random_numbers(int count, int max_number);
-
-template <class RandomAccessIterator, class RandomBoostGenerator>
-void br_random_shuffle(RandomAccessIterator &first, RandomAccessIterator &last,
-                       RandomBoostGenerator &rnd)
+template <class Container, class RandomGenerator>
+void random_thin_to(Container &data, int target_size, RandomGenerator &rnd)
 {
-  boost::uniform_int<> uni_dist;
-  boost::variate_generator<RandomBoostGenerator, boost::uniform_int<> > randomNumber(rnd, uni_dist);
-  std::random_shuffle(first, last, randomNumber);   
-}
+  if( target_size >= data.size() )
+    return;
+  if( target_size <= 0 ) {
+    data.clear();
+    return;
+  }
 
-template <class Container, class RandomBoostGenerator>
-void random_thin_to(Container &data, int target_size, RandomBoostGenerator &rnd)
-{
-  boost::uniform_int<> uni_dist;
-  boost::variate_generator<RandomBoostGenerator, boost::uniform_int<> > randomNumber(rnd, uni_dist);
-  
-  while ( data.size() > std::max(target_size, 0) )
-  {
-    typename Container::iterator it = data.begin();
-    int pos = randomNumber(data.size());
-    std::advance(it, pos);
+  while ( data.size() > std::max(target_size, 0) ) {
+    std::uniform_int_distribution<int> ds(0, data.size() - 1);
+    auto it = data.begin();
+    std::advance(it, ds(rnd));
     data.erase(it);
   }
 }
