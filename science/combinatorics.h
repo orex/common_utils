@@ -189,7 +189,7 @@ std::vector<T> create_start_combination(const std::map<T, int> &nm)
 template <class _Compare, class _ConstBidirectionalIterator, typename IndexType>
 inline IndexType __permutation_count(_ConstBidirectionalIterator __first,
                               _ConstBidirectionalIterator __last, _Compare __comp) {
-  static_assert(std::is_arithmetic<IndexType>::value);
+  static_assert(std::is_arithmetic<IndexType>::value, "Result type should be arithmetic.");
   _ConstBidirectionalIterator __it = __last;
   if( __first == __last )
     return IndexType(0);
@@ -263,7 +263,7 @@ next_permutation_it(_BidirectionalIterator __first, _BidirectionalIterator __las
 template <class _Compare, class _ConstBidirectionalIterator, typename IndexType>
 inline
 IndexType __permutation_index(_ConstBidirectionalIterator __first, _ConstBidirectionalIterator __last, _Compare __comp) {
-  static_assert(std::is_arithmetic<IndexType>::value);
+  static_assert(std::is_arithmetic<IndexType>::value, "Result type should be arithmetic.");
   IndexType result(0);
   _ConstBidirectionalIterator __it = __last;
   if( __first == __last )
