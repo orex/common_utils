@@ -9,7 +9,7 @@
 #define	SCANF_PP_BASE_HPP
 
 #include <string>
-#include <boost/regex.hpp>
+#include <regex>
 #include <boost/lexical_cast.hpp>
 #include <cassert>
 
@@ -20,8 +20,8 @@ namespace scanf_pp
   {
   private:
     std::string match_str;
-    boost::regex rx;
-    boost::smatch what;
+    std::regex rx;
+    std::smatch what;
     int curr_pos;
     
     bool all_vars_read()
@@ -37,7 +37,7 @@ namespace scanf_pp
     { 
       assert(all_vars_read());
       match_str = rx_str;
-      bool result = boost::regex_match(match_str, what, rx);
+      bool result = std::regex_match(match_str, what, rx);
       
       curr_pos   = result ? 1 : -1;
       
