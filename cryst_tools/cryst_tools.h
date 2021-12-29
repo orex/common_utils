@@ -33,8 +33,7 @@ namespace cryst_tools {
   }
   Eigen::Vector3d norm_frac(const Eigen::Vector3d &frac);
 
-  std::vector<Eigen::Matrix3d> get_symmetries(const Eigen::Matrix3d &cell,
-          const int range = 2);
+  std::vector<Eigen::Matrix3d> get_cell_symmetries(const Eigen::Matrix3d &cell, const double tol);
 
   std::vector<Eigen::Vector3d> get_shifts(const Eigen::Matrix3d &sym_matrix_B,
           const Eigen::Matrix3d &cell,
@@ -48,14 +47,12 @@ namespace cryst_tools {
 
   vector_Affine3d get_all_symmetries(const Eigen::Matrix3d &cell,
           const vc_sets &frac_coords,
-          const double tol,
-          const int range = 2);
+          const double tol);
 
-vector_Affine3d get_all_symmetries(const Eigen::Matrix3d &cell,
+  vector_Affine3d get_all_symmetries(const Eigen::Matrix3d &cell,
           const vc_sets &frac_coords,
           const std::vector<bool> &all_symm,
-          const double tol,
-          const int range = 2);
+          const double tol);
 
 };
 

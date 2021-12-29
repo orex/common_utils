@@ -7,6 +7,7 @@
 
 #include <set>
 #include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 #include "cryst_tools.h"
 #include "comb_points.h"
 
@@ -70,40 +71,63 @@ Eigen::Vector3d cryst_tools::norm_frac(const Eigen::Vector3d &frac)
 }
 
 
-std::vector<Eigen::Matrix3d> cryst_tools::get_symmetries(const Eigen::Matrix3d &cell,
-                                                         const int range)
+std::vector<Eigen::Matrix3d> cryst_tools::get_cell_symmetries(const Eigen::Matrix3d &cell, const double tol)
 {
   std::vector<Eigen::Matrix3d> result;
   set<Eigen::Matrix3d, Matrix3d_comp_cl> real_space_symm;
-  
-  int mult = 2 * range + 1;
-  
-  Matrix3d r_cell = cell.inverse();
-  
-  for(int k = 0; k < pow(mult, 9); k++)
+
+  Vector3d ve = SelfAdjointEigenSolver<Matrix3d>(cell.transpose() * cell).eigenvalues();
+  pair<double, double> mm = minmax({ve.x(), ve.y(), ve.z()});
+  const int range = sqrt(std::abs(mm.second / mm.first)) + 1;
+  const int mult = 2 * range + 1;
+
+  array<double, 3> cell_lengths{cell.col(0).norm(), cell.col(1).norm(), cell.col(2).norm()};
+  array<vector<Vector3i>, 3> conv_vect;
+  for(int k = 0; k < mult * mult * mult; k++)
   {
-    Matrix3d B;
+    Vector3i vf;
     int p = k;
-    for(int i = 0; i < 9; i++)  
+    for(int i = 0; i < 3; i++)
     {
-      B(i / 3, i % 3) = p % mult - range;
+      vf[i] = p % mult - range;
       p /= mult;
     }
-    if( std::abs(B.determinant()) != 1) continue;
-
-    Matrix3d A;
-    A = cell * B * r_cell;
-    
-    if( (A.transpose() - A.inverse()).norm() < 1E-3)
-    {  
-      if(real_space_symm.count(A) == 0)
-      {  
-        real_space_symm.insert(A);
-        result.push_back(B);
-      }  
+    double nm = (cell * vf.cast<double>()).norm();
+    for(int i = 0; i < 3; i++)
+    {
+      if(std::abs(nm - cell_lengths[i]) < tol ) {
+        conv_vect[i].push_back(vf);
+      }
     }
   }
-  
+
+  Matrix3d r_cell = cell.inverse();
+
+  Matrix3i B;
+  for(int i = 0; i < conv_vect[0].size(); i++)
+  {
+    B.col(0) = conv_vect[0][i];
+    for(int j = 0; j < conv_vect[1].size(); j++)
+    {
+      B.col(1) = conv_vect[1][j];
+      for(int k = 0; k < conv_vect[2].size(); k++)
+      {
+        B.col(2) = conv_vect[2][k];
+        if( std::abs(B.determinant()) != 1) continue;
+        Matrix3d A = cell * B.cast<double>() * r_cell;
+
+        if((A.transpose() * A - Matrix3d::Identity()).norm() < tol)
+        {
+          if(real_space_symm.count(A) == 0)
+          {
+            real_space_symm.insert(A);
+            result.push_back(B.cast<double>());
+          }
+        }
+      }
+    }
+  }
+
   return result;
 }
 
@@ -289,16 +313,15 @@ std::vector<Eigen::Vector3d> cryst_tools::shifts_intersect(const Eigen::Matrix3d
 vector_Affine3d cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
                                                              const vc_sets &frac_coords,
                                                              const std::vector<bool> &all_symm, 
-                                                             const double tol,
-                                                             const int range)
+                                                             const double tol)
 {
   assert(all_symm.size() == frac_coords.size());
 
   vector_Affine3d result;
   result.clear();
   
-  vector<Matrix3d> symm = get_symmetries(cell, range);
-  
+  vector<Matrix3d> symm = get_cell_symmetries(cell, tol);
+
   for(int i = 0; i < symm.size(); i++)
   {
     vector<Vector3d> shifts_total;
@@ -331,13 +354,12 @@ vector_Affine3d cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
 
 vector_Affine3d cryst_tools::get_all_symmetries(const Eigen::Matrix3d &cell,
                                                              const vc_sets &frac_coords,
-                                                             const double tol,        
-                                                             const int range)
+                                                             const double tol)
 {
   vector<bool> bc;
   bc.resize(frac_coords.size(), true);
   
-  return get_all_symmetries(cell, frac_coords, bc, tol, range);
+  return get_all_symmetries(cell, frac_coords, bc, tol);
 }        
 
 void cryst_tools::min_dist::set_cell(const Eigen::Matrix3d &cell_v, double tol)
