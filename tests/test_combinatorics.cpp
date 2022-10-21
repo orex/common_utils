@@ -16,10 +16,13 @@
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/timer/timer.hpp>
+#include <boost/test/included/unit_test.hpp>
 
 #include "science/combinatorics.h"
 #include "others/rnd_utils.h"
 
+namespace utf = boost::unit_test;
 
 template <typename T>
 void multiplication_check(int v1, int v2, int v3, int v4, bool overflow)
@@ -225,6 +228,116 @@ BOOST_AUTO_TEST_CASE(Test_permutation_index_rnd) {
   }
 }
 
+#define CHECK_NEXT_K_REF(arr, k, ref_array, ref_result)                        \
+  {                                                                            \
+    auto a = (arr);                                                            \
+    auto result = next_k_permutations(a.begin(), a.end(), (k));                \
+    BOOST_CHECK_EQUAL((result), (ref_result));                                 \
+    BOOST_CHECK_EQUAL_COLLECTIONS(a.begin(), a.end(), (ref_array).begin(),     \
+                                  (ref_array).end());                          \
+  }
+
+BOOST_AUTO_TEST_CASE(Test_next_k_permutation_trivial) {
+  const std::array<int, 0> empty({});
+  const std::array<int, 1> one_e({1});
+  const std::array<int, 2> two_same({1, 1});
+  const std::array<int, 2> two_different_first({0, 1});
+  const std::array<int, 2> two_different_last({1, 0});
+
+  for (int i = 0; i < 12; i++) {
+    CHECK_NEXT_K_REF(empty, i, empty, i);
+    CHECK_NEXT_K_REF(one_e, i, one_e, i);
+    CHECK_NEXT_K_REF(two_same, i, two_same, i);
+    if (i % 2 == 0) {
+      CHECK_NEXT_K_REF(two_different_first, i, two_different_first, i / 2);
+      CHECK_NEXT_K_REF(two_different_last, i, two_different_last, i / 2);
+    } else {
+      CHECK_NEXT_K_REF(two_different_first, i, two_different_last, i / 2);
+      CHECK_NEXT_K_REF(two_different_last, i, two_different_first, i / 2 + 1);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(Test_next_k_permutation_same) {
+  std::vector<int> data;
+  for (int i = 0; i < 12; i++) {
+    for (int64_t k : {0L, 12L, 456L, 1237L, 1276897L, 1573003353979063832L}) {
+      std::vector<int> a = data;
+      BOOST_CHECK_EQUAL(next_k_permutations(a.begin(), a.end(), k), k);
+      BOOST_CHECK_EQUAL_COLLECTIONS(a.begin(), a.end(), data.begin(),
+                                    data.end());
+    }
+    data.emplace_back(2);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(Test_next_k_permutation_one_change) {
+  constexpr int64_t length = 12;
+  for (int64_t i = 0; i < length; i++) {
+    for (int64_t k :
+         {0L, 5L, 12L, 1717L, 1237L, 1276897L, 1573003353979063832L}) {
+      std::vector<int> a(length, 1);
+      a[i] = 0;
+      int64_t l = next_k_permutations(a.begin(), a.end(), k);
+      BOOST_CHECK_EQUAL(std::count(a.begin(), a.end(), 0), 1);
+      BOOST_CHECK_EQUAL(std::count(a.begin(), a.end(), 1), length - 1);
+      BOOST_CHECK_EQUAL(l, (k + i) / length);
+      BOOST_CHECK_EQUAL(a[(k + i) % length], 0);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(Test_next_k_permutation_extensive) {
+  constexpr int a_size = 6;
+  constexpr int cmb_num = 180;
+  constexpr int num_rep = 5;
+  const std::array<int, a_size> start_p({0, 1, 2, 2, 3, 3});
+  std::vector<std::array<int, a_size>> v(1, start_p);
+  for (;;) {
+    v.emplace_back(v.back());
+    if (!std::next_permutation(v.back().begin(), v.back().end()))
+      break;
+  }
+  v.pop_back();
+  BOOST_CHECK_EQUAL(v.size(), cmb_num);
+
+  for (int i = 0; i < cmb_num; i++) {
+    for (int j = i; j < cmb_num * num_rep; j++) {
+      int k = j - i;
+      CHECK_NEXT_K_REF(v[i % cmb_num], k, v[j % cmb_num],
+                       (j / cmb_num) - (i / cmb_num));
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(Test_next_k_permutation_benchmark, *utf::disabled()) {
+  constexpr int64_t k_step = 50000;
+  std::vector<int> start_p(34, 1);
+  std::fill(start_p.begin(), start_p.begin() + 17, 0);
+  volatile int64_t count_num = 0;
+  auto wp = start_p;
+  boost::timer::cpu_timer cpt;
+  cpt.start();
+  do {
+    count_num++;
+  } while (std::next_permutation(wp.begin(), wp.end()));
+  cpt.stop();
+
+  BOOST_CHECK_EQUAL_COLLECTIONS(wp.begin(), wp.end(), start_p.begin(),
+                                start_p.end());
+
+  auto et_old = cpt.elapsed().user;
+  cpt.start();
+  for (int i = 0; i < count_num / k_step; i++) {
+    next_k_permutations(wp.begin(), wp.end(), k_step);
+  }
+  next_k_permutations(wp.begin(), wp.end(), count_num % k_step);
+  cpt.stop();
+  auto et_new = cpt.elapsed().user;
+  BOOST_CHECK_EQUAL_COLLECTIONS(wp.begin(), wp.end(), start_p.begin(),
+                                start_p.end());
+  std::cout << "Performance boost: " << double(et_old) / double(et_new)
+            << std::endl;
+}
 
 BOOST_AUTO_TEST_SUITE_END()
-

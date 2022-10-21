@@ -1,6 +1,6 @@
 include_directories(${CMAKE_SOURCE_DIR}/others/)
 
-find_package(Boost 1.46 COMPONENTS unit_test_framework random filesystem system)
+find_package(Boost 1.46 COMPONENTS unit_test_framework random filesystem system timer)
 
 add_executable(test_str test_str.cpp 
                         ${CMAKE_SOURCE_DIR}/others/string_utils.cpp)
