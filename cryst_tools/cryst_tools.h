@@ -82,23 +82,27 @@ namespace cryst_tools {
 
   class ewald_sum {
    private:
-    struct cell_data_t {
-      Eigen::Vector3d shift;
+    static constexpr int max_cell_check_range = 20;
+    struct recep_data_t {
       Eigen::Vector3d recl_K;
       double exp_recl_term;
+      recep_data_t(Eigen::Vector3d recl_K_v, double exp_recl_term_v)
+          : recl_K(recl_K_v), exp_recl_term(exp_recl_term_v) {};
     };
-   private:
+
+  private:
     Eigen::Matrix3d cell;
     Eigen::Matrix3d res_cell;
     double volume;
     
     double precision;
-    Eigen::Vector3i box_size;
     double r_max;
-    double g_max;
     double eta;
+    double sqeta;
 
-    std::vector<cell_data_t> sd;
+    std::vector<Eigen::Vector3d> real_data_shifts;
+    std::vector<recep_data_t> rec_data;
+
   public:
     ewald_sum()
     { precision = -1; };

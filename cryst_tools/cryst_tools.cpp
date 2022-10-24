@@ -483,71 +483,71 @@ void cryst_tools::ewald_sum::set_cell(const Eigen::Matrix3d &cell_v)
 
 void cryst_tools::ewald_sum::set_precision(double N, double precision_v)
 {
+  constexpr int max_periods = (2 * max_cell_check_range + 1) *
+                              (2 * max_cell_check_range + 1) *
+                              (2 * max_cell_check_range + 1);
+
   precision = precision_v;
   
-  eta = M_PI * pow(N/volume, 1.0/3.0);
-  r_max = sqrt(-log(precision) / eta);
-  g_max = 2 * sqrt(-log(precision) * eta);
-  
-  //cout << "Eta: " << eta << endl;
-  //cout << "r_max: " << r_max << endl;
-  //cout << "g_max: " << g_max << endl;  
-  
-  Vector3d box_size_d = res_cell.inverse() * Vector3d(g_max, g_max, g_max);
-  for(int i = 0; i < box_size.size(); i++)
-    box_size[i] = max(5, int(abs(box_size_d[i])) + 1);
+  eta = M_PI * pow(1/volume, 2.0/3.0);
+  sqeta = sqrt(eta);
 
-  sd.clear();
-  sd.reserve( (2 * box_size[0] + 1) * (2 * box_size[1] + 1) * (2 * box_size[2] + 1));
-  for(int i = -box_size[0]; i <= box_size[0]; i++) {
-    for (int j = -box_size[1]; j <= box_size[1]; j++) {
-      for (int k = -box_size[2]; k <= box_size[2]; k++) {
+  for(r_max = 1 / sqeta;
+       std::erfc(r_max * sqeta) / r_max > precision / max_periods;
+       r_max += 0.1 / sqeta) {};
+
+  double max_input_shift = 2 * (cell.col(0).norm() +
+                     cell.col(1).norm() + cell.col(2).norm());
+
+  real_data_shifts.clear();
+  rec_data.clear();
+  for(int i = -max_cell_check_range; i <= max_cell_check_range; i++) {
+    for (int j = -max_cell_check_range; j <= max_cell_check_range; j++) {
+      for (int k = -max_cell_check_range; k <= max_cell_check_range; k++) {
         Vector3d p(i, j, k);
-        sd.emplace_back();
-        sd.back().shift = cell * p;
-        sd.back().recl_K = res_cell * p;
-        double K2 = sd.back().recl_K.squaredNorm();
-        sd.back().exp_recl_term = exp(-K2 / (4 * eta) ) / K2;
+        Vector3d shift = cell * p;
+        if( shift.norm() - max_input_shift < r_max )
+          real_data_shifts.emplace_back(shift);
+
+        if( (i != 0) || (j != 0) || (k != 0) ) {
+          Vector3d recl_K = res_cell * p;
+          double K2 = recl_K.squaredNorm();
+          double exp_recl_term = exp(-K2 / (4 * eta)) / K2;
+          if (exp_recl_term > precision / max_periods)
+            rec_data.emplace_back(recl_K, exp_recl_term);
+        }
       }
     }
   }
+  std::sort(
+      real_data_shifts.begin(), real_data_shifts.end(),
+      [](const auto &a, const auto &b) -> bool { return a.norm() < b.norm(); });
 }
 
-double cryst_tools::ewald_sum::get_energy(const Eigen::Vector3d &vd) const
-{
+double cryst_tools::ewald_sum::get_energy(const Eigen::Vector3d &vd) const {
+  double vd_norm = vd.norm();
   double real_term = 0;
-  double rec_term = 0;
   bool self_iteraction = false;
-  double sqeta = sqrt(eta);
-  int d_pos = 0;
-  for(int i = -box_size[0]; i <= box_size[0]; i++) {
-    for(int j = -box_size[1]; j <= box_size[1]; j++) {
-      for(int k = -box_size[2]; k <= box_size[2]; k++) {
-        const auto &cv = sd[d_pos++];
-        Vector3d p(i, j, k);
-        // double rd = (vd + cell * p).norm();
-        double rd = (vd + cv.shift).norm();
+  for (const auto &s : real_data_shifts) {
+    // For sorted vectors no needs to continue all length will be higher
+    if (s.norm() - vd_norm > r_max)
+      break;
 
-        // Real-space summation
-        if(rd > 1E-3)
-          real_term += erfc(sqeta * rd) / rd;
-        else
-          self_iteraction = true;
-
-        if( (i != 0) || (j != 0) || (k != 0) )
-        {
-          // K-space summation
-          // Vector3d K = res_cell * p;
-          // double K2 = K.squaredNorm();
-          // double Kvd = K.transpose() * vd;
-          // rec_term += cos(Kvd) * exp(-K2 / (4 * eta) )/ K2;*/
-          double Kvd = cv.recl_K.dot(vd);
-          rec_term += cos(Kvd) * cv.exp_recl_term;
-        }  
-      }  
+    double r = (s + vd).norm();
+    if (r < 1E-3) {
+      self_iteraction = true;
+    } else if (r < r_max) {
+      real_term += std::erfc(sqeta * r) / r;
     }
-  }  
-  
+  }
+
+  // K-space summation
+  double rec_term = 0;
+  for (const auto &cv : rec_data) {
+    double Kvd = cv.recl_K.dot(vd);
+    rec_term += std::cos(Kvd) * cv.exp_recl_term;
+  }
+
   double result = 0.5 * real_term + 0.5 * 4 * M_PI / volume * rec_term;
   if(self_iteraction)
     result -= sqrt(eta / M_PI);
