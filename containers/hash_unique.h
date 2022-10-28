@@ -15,13 +15,13 @@ class hash_set {
   typedef std::pair<hashType, T> bucket_t;
   typedef std::vector<bucket_t> buckets_t;
   buckets_t buckets;
-  const Hash &_h;
-  const Eq & _eq;
+  const Hash _h;
+  const Eq _eq;
   std::size_t mask;
   std::size_t _size;
  public:
   typedef T value_type;
-  hash_set(int num_elements, const Hash &hash, const Eq &eq ): _h(hash), _eq(eq), _size(0) {
+  hash_set(int num_elements, const Hash hash, const Eq eq ): _h(hash), _eq(eq), _size(0) {
     int cnt;
     for(cnt = std::max(16, num_elements * 4); (cnt & (cnt - 1)) != 0; cnt = (cnt & (cnt - 1))) {};
     buckets.resize(cnt, {0, T()});
